@@ -280,6 +280,17 @@
         .canvas-area { position: relative; width: 500px; height: 500px; background: #11151f; border-radius: 36px; box-shadow: 0 0 0 3px var(--accent); overflow: hidden; }
         #deviceSvg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #1b2132; border-radius: 32px; }
         #dirtCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 32px; cursor: crosshair; display: block; }
+        #drawing-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 32px;
+            touch-action: none;
+            z-index: 12;
+            pointer-events: none; /* enabled only when brush active */
+        }
         #sticker-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 15; }
         .controls-panel { flex: 1; min-width: 320px; background: var(--panel-bg); backdrop-filter: blur(12px); border-radius: 36px; padding: 22px; }
         .stage-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
@@ -328,9 +339,15 @@
         .review-popup button { margin-top: 10px; background: var(--accent); border: none; padding: 4px 16px; border-radius: 20px; cursor: pointer; }
         .gold-sparkle { position: absolute; width: 40px; height: 40px; background: radial-gradient(circle, gold, orange); border-radius: 50%; pointer-events: none; animation: goldPulse 0.5s ease-out forwards; z-index: 100; }
         @keyframes goldPulse { 0% { transform: scale(0); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+        .brush-tool-section { margin-top: 16px; padding-top: 12px; border-top: 1px solid rgba(249,115,22,0.4); }
+        .color-palette { display: flex; gap: 10px; margin: 12px 0; flex-wrap: wrap; }
+        .draw-color { width: 40px; height: 40px; border-radius: 50%; cursor: pointer; border: 2px solid white; transition: 0.1s; }
+        .draw-color.active { border: 3px solid gold; transform: scale(1.05); }
+        #activateBrushBtn { background: #3b82f6; color: white; margin-bottom: 10px; }
+        #activateBrushBtn.locked { background: #555; cursor: not-allowed; opacity: 0.5; }
     </style>
 
-    <!-- Yandex Games SDK -->
+    <!-- Yandex Games SDK (optional) -->
     <script async src="/sdk.js" onload="initYandexSDK()"></script>
 </head>
 <body>
@@ -369,6 +386,7 @@
             <div class="canvas-area" id="canvasArea">
                 <svg id="deviceSvg" viewBox="0 0 500 500"></svg>
                 <canvas id="dirtCanvas" width="500" height="500"></canvas>
+                <canvas id="drawing-layer" width="500" height="500"></canvas>
                 <div id="sticker-layer"></div>
             </div>
             <div class="controls-panel">
@@ -387,6 +405,11 @@
                     <div><strong data-i18n="stickerGalleryTitle">✨ STICKER GALLERY</strong></div>
                     <div class="sticker-gallery" id="stickerGallery"></div>
                     <div id="stickerFeedback" style="font-size:0.7rem; margin-top:6px;" data-i18n="stickerHint">Click sticker, then on device</div>
+                    <div class="brush-tool-section" id="brushToolSection">
+                        <button id="activateBrushBtn" data-i18n="brush">🖌️ Brush</button>
+                        <div id="drawPalette" class="color-palette" style="display: none;"></div>
+                        <button id="wipeDrawingBtn" style="display: none;" data-i18n="clearDrawing">🧽 Clear Drawing</button>
+                    </div>
                 </div>
                 <div id="sellPanel" class="sell-panel hidden">
                     <div><strong data-i18n="setPrice">💰 SET PRICE</strong></div>
@@ -522,7 +545,11 @@
             applyPaste: "🧴 Нанесите пасту",
             connectWires: "🔌 Соедините провода",
             replaceParts: "🔧 Замените детали",
-            thermalPasteHint: "Нанесите термопасту (5 кликов)"
+            thermalPasteHint: "Нанесите термопасту (5 кликов)",
+            artistPack: "🎨 Набор Художника",
+            brush: "🖌️ Кисть",
+            color: "Цвет",
+            clearDrawing: "🧽 Очистить рисунок"
         },
         en: {
             menu: "🏠 Menu",
@@ -569,7 +596,11 @@
             applyPaste: "🧴 Apply paste",
             connectWires: "🔌 Connect wires",
             replaceParts: "🔧 Replace parts",
-            thermalPasteHint: "Apply thermal paste (5 clicks)"
+            thermalPasteHint: "Apply thermal paste (5 clicks)",
+            artistPack: "🎨 Artist Pack",
+            brush: "🖌️ Brush",
+            color: "Color",
+            clearDrawing: "🧽 Clear Drawing"
         }
     };
 
@@ -594,6 +625,11 @@
         renderDevices();
         renderShop();
         document.getElementById('balanceLabel').innerHTML = t.balance;
+        // update brush button text
+        const brushBtn = document.getElementById('activateBrushBtn');
+        if (brushBtn) brushBtn.innerText = t.brush;
+        const wipeBtn = document.getElementById('wipeDrawingBtn');
+        if (wipeBtn) wipeBtn.innerText = t.clearDrawing;
     }
 
     function setLanguage(lang) {
@@ -750,18 +786,20 @@
         return { ...spec, id: idx, minPrice: spec.base, maxPrice: maxPrice, caseSvg: () => buildCaseSVG(spec.shape, spec.name), internalsSvg: () => internalPCB(spec.shape) };
     });
 
-    // UPGRADES
+    // UPGRADES (added artistPack)
     let upgrades = {
         screwdriver: false, brush: false, ultrasonic: false, license: false,
         goldenScrews: false, vipStickers: false, xray: false, autoAssembler: false,
         chrome: false, megaMagnet: false, robotAssistant: false, priceScanner: false,
-        premiumThermalPaste: false, magneticMat: false
+        premiumThermalPaste: false, magneticMat: false,
+        artistPack: false
     };
     const UPGRADE_PRICES = {
         screwdriver: 500, brush: 400, ultrasonic: 800, license: 1000,
         goldenScrews: 1200, vipStickers: 600, xray: 700, autoAssembler: 1500,
         chrome: 900, megaMagnet: 1100, robotAssistant: 2000, priceScanner: 800,
-        premiumThermalPaste: 600, magneticMat: 500
+        premiumThermalPaste: 600, magneticMat: 500,
+        artistPack: 42052
     };
     function loadUpgrades() { const saved = localStorage.getItem('mr_upgrades'); if (saved) try { upgrades = { ...upgrades, ...JSON.parse(saved) }; } catch(e) {} }
     function saveUpgrades() { localStorage.setItem('mr_upgrades', JSON.stringify(upgrades)); }
@@ -798,6 +836,142 @@
     let priceRangeDiv = document.getElementById('priceRange');
     let sellFeedback = document.getElementById('sellFeedback');
     let shopGrid = document.getElementById('shopGrid');
+
+    // Drawing variables
+    let brushActive = false;
+    let drawingCanvas = document.getElementById('drawing-layer');
+    let drawingCtx = null;
+    let isDrawing = false;
+    let lastX = 0, lastY = 0;
+    let currentDrawColor = "#ff3333";
+
+    function initDrawingEngine() {
+        drawingCtx = drawingCanvas.getContext('2d');
+        drawingCtx.lineCap = 'round';
+        drawingCtx.lineJoin = 'round';
+        drawingCtx.lineWidth = 6;
+        drawingCtx.strokeStyle = currentDrawColor;
+        drawingCtx.clearRect(0, 0, 500, 500);
+    }
+
+    function startDraw(e) {
+        if (!brushActive || game.stage !== 5) return;
+        e.preventDefault();
+        const rect = drawingCanvas.getBoundingClientRect();
+        const scaleX = drawingCanvas.width / rect.width;
+        const scaleY = drawingCanvas.height / rect.height;
+        let clientX, clientY;
+        if (e.touches) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        const x = (clientX - rect.left) * scaleX;
+        const y = (clientY - rect.top) * scaleY;
+        isDrawing = true;
+        lastX = x;
+        lastY = y;
+        drawingCtx.beginPath();
+        drawingCtx.moveTo(x, y);
+        drawingCtx.lineTo(x+0.5, y+0.5);
+        drawingCtx.stroke();
+        sounds.sticker(); // brush sound
+    }
+
+    function drawMove(e) {
+        if (!isDrawing || !brushActive) return;
+        e.preventDefault();
+        const rect = drawingCanvas.getBoundingClientRect();
+        const scaleX = drawingCanvas.width / rect.width;
+        const scaleY = drawingCanvas.height / rect.height;
+        let clientX, clientY;
+        if (e.touches) {
+            clientX = e.touches[0].clientX;
+            clientY = e.touches[0].clientY;
+        } else {
+            clientX = e.clientX;
+            clientY = e.clientY;
+        }
+        const x = (clientX - rect.left) * scaleX;
+        const y = (clientY - rect.top) * scaleY;
+        drawingCtx.beginPath();
+        drawingCtx.moveTo(lastX, lastY);
+        drawingCtx.lineTo(x, y);
+        drawingCtx.stroke();
+        lastX = x;
+        lastY = y;
+    }
+
+    function endDraw() {
+        isDrawing = false;
+    }
+
+    function setupDrawingEvents() {
+        drawingCanvas.addEventListener('pointerdown', startDraw);
+        drawingCanvas.addEventListener('pointermove', drawMove);
+        drawingCanvas.addEventListener('pointerup', endDraw);
+        drawingCanvas.addEventListener('pointercancel', endDraw);
+    }
+
+    function clearDrawingCanvas() {
+        if (drawingCtx) drawingCtx.clearRect(0, 0, 500, 500);
+    }
+
+    function setDrawColor(color) {
+        currentDrawColor = color;
+        if (drawingCtx) drawingCtx.strokeStyle = color;
+    }
+
+    function updateBrushUI() {
+        const brushBtn = document.getElementById('activateBrushBtn');
+        const paletteDiv = document.getElementById('drawPalette');
+        const wipeBtn = document.getElementById('wipeDrawingBtn');
+        const unlocked = upgrades.artistPack;
+        if (unlocked) {
+            brushBtn.classList.remove('locked');
+            brushBtn.disabled = false;
+            paletteDiv.style.display = 'flex';
+            wipeBtn.style.display = 'inline-block';
+            if (!paletteDiv.hasChildNodes()) {
+                const colors = ['#ff3333', '#39ff14', '#3b82f6', '#facc15', '#ffffff'];
+                colors.forEach(col => {
+                    const swatch = document.createElement('div');
+                    swatch.className = 'draw-color';
+                    swatch.style.backgroundColor = col;
+                    swatch.addEventListener('click', () => {
+                        setDrawColor(col);
+                        document.querySelectorAll('.draw-color').forEach(c => c.classList.remove('active'));
+                        swatch.classList.add('active');
+                    });
+                    paletteDiv.appendChild(swatch);
+                });
+                const first = paletteDiv.firstChild;
+                if (first) first.classList.add('active');
+            }
+        } else {
+            brushBtn.classList.add('locked');
+            brushBtn.disabled = true;
+            paletteDiv.style.display = 'none';
+            wipeBtn.style.display = 'none';
+        }
+    }
+
+    function toggleBrushMode() {
+        if (!upgrades.artistPack) return;
+        brushActive = !brushActive;
+        const brushBtn = document.getElementById('activateBrushBtn');
+        if (brushActive) {
+            brushBtn.style.background = '#2ecc71';
+            drawingCanvas.style.pointerEvents = 'auto';
+            brushBtn.innerText = translations[currentLang].brush + " (ON)";
+        } else {
+            brushBtn.style.background = '#3b82f6';
+            drawingCanvas.style.pointerEvents = 'none';
+            brushBtn.innerText = translations[currentLang].brush;
+        }
+    }
 
     function updateStageProgress() { stageProgressFill.style.width = (game.stage/6)*100 + "%"; }
     function updatePhaseProgress() {
@@ -856,6 +1030,7 @@
             sellBtn.classList.remove('hidden');
             phaseInstructions.innerText = "🎨 Decorate the gadget!";
             setupDesignMode();
+            updateBrushUI(); // ensure brush UI reflects purchase status
         } else if(game.stage === 6) {
             sellPanel.classList.remove('hidden');
             phaseInstructions.innerText = "💰 Set a price within the range to sell.";
@@ -1308,6 +1483,7 @@
         sounds.sell();
         document.getElementById('sticker-layer').innerHTML = '';
         ctx.clearRect(0, 0, 500, 500);
+        clearDrawingCanvas(); // clear drawing for next customer
         startDevice(DEVICES[player.currentDeviceIndex]);
     }
 
@@ -1427,6 +1603,8 @@
         updateUI();
         switchScreen('workshop');
         sounds.swoosh();
+        // clear drawing canvas when starting new device (redundant with sellDevice but safe)
+        clearDrawingCanvas();
     }
 
     let eraserRadius = upgrades.brush ? 45 : 30;
@@ -1522,7 +1700,8 @@
             { id: 'screwdriver', name: t.electricScrewdriver, price: UPGRADE_PRICES.screwdriver, desc: currentLang === 'ru' ? 'Откручивает винты в 2 раза быстрее' : 'Unscrew 2x faster' },
             { id: 'xray', name: t.xray, price: UPGRADE_PRICES.xray, desc: currentLang === 'ru' ? 'Подсвечивает оставшуюся грязь' : 'Highlights remaining dirt' },
             { id: 'robotAssistant', name: t.robotHelper, price: UPGRADE_PRICES.robotAssistant, desc: currentLang === 'ru' ? 'Автоматически собирает винты в лоток' : 'Auto-collects screws' },
-            { id: 'ultrasonic', name: t.ultraSolvent, price: UPGRADE_PRICES.ultrasonic, desc: currentLang === 'ru' ? 'Удаляет 30% грязи мгновенно' : 'Removes 30% dirt instantly' }
+            { id: 'ultrasonic', name: t.ultraSolvent, price: UPGRADE_PRICES.ultrasonic, desc: currentLang === 'ru' ? 'Удаляет 30% грязи мгновенно' : 'Removes 30% dirt instantly' },
+            { id: 'artistPack', name: t.artistPack, price: UPGRADE_PRICES.artistPack, desc: currentLang === 'ru' ? 'Разблокирует инструмент «Кисть» в режиме дизайна' : 'Unlocks the Brush tool in Design stage' }
         ];
         shopGrid.innerHTML = upgradesList.map(up => `
             <div class="shop-item">
@@ -1542,6 +1721,8 @@
                     document.getElementById('coinsDisplay').innerText = player.coins;
                     renderShop();
                     sounds.uiBuy();
+                    // if artist pack purchased, update brush UI immediately
+                    if (up.id === 'artistPack') updateBrushUI();
                 } else {
                     sounds.uiError();
                     alert(t.notEnoughCoins);
@@ -1590,7 +1771,7 @@
         }
     }
 
-    // Load saved data and start
+    // Initialization
     let saved = localStorage.getItem('techMasterSave');
     if(saved) {
         try {
@@ -1605,9 +1786,16 @@
     setLanguage(currentLang);
     setMute(isMuted);
     switchScreen('menu');
+
+    // Drawing engine initialization
+    initDrawingEngine();
+    setupDrawingEvents();
+    updateBrushUI();
+    document.getElementById('activateBrushBtn').addEventListener('click', toggleBrushMode);
+    document.getElementById('wipeDrawingBtn').addEventListener('click', () => { clearDrawingCanvas(); sounds.uiClick(); });
 </script>
 
-<!-- Инициализация SDK Яндекс Игр -->
+<!-- Yandex Games SDK init -->
 <script>
     let ysdk = null;
     window.initYandexSDK = async function() {
@@ -1615,8 +1803,6 @@
             if (typeof YaGames !== 'undefined') {
                 ysdk = await YaGames.init();
                 console.log('Yandex SDK initialized');
-                // При необходимости можно добавить вызовы для рекламы, покупок и сохранения данных
-                // Например: ysdk.getPlayer().setData({ key: 'coins', value: player.coins });
             } else {
                 console.warn('YaGames not defined (local testing)');
             }
@@ -1624,7 +1810,6 @@
             console.error('Yandex SDK init error:', e);
         }
     };
-    // Если скрипт уже загрузился до onload, инициализируем сразу
     if (typeof YaGames !== 'undefined') {
         initYandexSDK();
     }
