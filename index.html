@@ -1,0 +1,1633 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Master Revive: ASMR Repair Simulator</title>
+    <style>
+        * {
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+            box-sizing: border-box;
+        }
+        :root {
+            --bg-dark: #0a0c15;
+            --accent: #f97316;
+            --accent-glow: #ffaa55;
+            --text: #eef2ff;
+            --panel-bg: #141a26cc;
+            --shop-bg: #1e253b;
+        }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(circle at 20% 30%, #0b0e17, #03050a);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            color: var(--text);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .game-container {
+            max-width: 1400px;
+            width: 100%;
+            background: rgba(20, 26, 38, 0.9);
+            backdrop-filter: blur(4px);
+            border-radius: 56px;
+            box-shadow: 0 25px 45px rgba(0,0,0,0.6);
+            overflow: hidden;
+            border: 1px solid rgba(249,115,22,0.3);
+        }
+        .top-bar {
+            background: #0f121dcc;
+            padding: 12px 28px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            border-bottom: 2px solid var(--accent);
+            position: relative;
+            z-index: 10010;
+        }
+        .stats {
+            display: flex;
+            gap: 24px;
+            background: #1e2438;
+            padding: 6px 22px;
+            border-radius: 60px;
+        }
+        .stat {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: bold;
+        }
+        .nav-buttons {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+        .nav-btn {
+            background: var(--accent);
+            border: none;
+            padding: 8px 22px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #111;
+            transition: 0.1s;
+            z-index: 10010;
+        }
+        .nav-btn:active { transform: scale(0.96); }
+        .gear-btn {
+            background: #2c334a;
+            font-size: 1.6rem;
+            padding: 4px 12px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid var(--accent);
+            line-height: 1;
+        }
+        .gear-btn:hover { background: var(--accent); color: #111; transform: rotate(15deg); }
+        .progress-tracker { background: #0b0e18; padding: 8px 28px; }
+        .progress-bar-container { background: #2a2f42; height: 8px; border-radius: 12px; overflow: hidden; }
+        .progress-stage-fill { width: 0%; height: 100%; background: var(--accent); transition: width 0.3s ease; }
+
+        /* MODAL OVERLAY */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.85);
+            backdrop-filter: blur(8px);
+            z-index: 20000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            visibility: hidden;
+            opacity: 0;
+            transition: 0.2s;
+        }
+        .modal-overlay.active {
+            visibility: visible;
+            opacity: 1;
+        }
+        .settings-modal {
+            background: linear-gradient(145deg, #1a1f2e, #0f121f);
+            border-radius: 48px;
+            padding: 32px 40px;
+            width: 360px;
+            text-align: center;
+            border: 2px solid var(--accent);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+        }
+        .settings-modal h2 {
+            color: var(--accent);
+            margin-top: 0;
+            font-size: 2rem;
+        }
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 24px 0;
+            background: #232838;
+            padding: 12px 20px;
+            border-radius: 60px;
+        }
+        .setting-row span {
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+        .toggle-group {
+            display: flex;
+            gap: 12px;
+        }
+        .toggle-btn {
+            background: #2c334a;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            transition: 0.1s;
+        }
+        .toggle-btn.active {
+            background: var(--accent);
+            color: #111;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+        .active-lang {
+            background: #f97316 !important;
+            box-shadow: 0 0 15px #ffaa55 !important;
+            color: #000 !important;
+            border: 2px solid #fff;
+        }
+        .back-game-btn {
+            background: var(--accent);
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-top: 20px;
+            cursor: pointer;
+            width: 100%;
+        }
+        .screen { display: none; padding: 26px; animation: fadeIn 0.25s; }
+        .screen.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px);} to { opacity: 1; transform: translateY(0);} }
+
+        /* Clean device cards */
+        .device-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            max-height: 65vh;
+            overflow-y: auto;
+            padding: 12px;
+        }
+        .device-card {
+            background: linear-gradient(145deg, #21283e, #171e30);
+            border-radius: 32px;
+            padding: 18px;
+            width: 180px;
+            text-align: center;
+            cursor: pointer;
+            transition: 0.2s;
+            border: 1px solid rgba(249,115,22,0.5);
+        }
+        .device-card:hover {
+            transform: translateY(-6px);
+            border-color: var(--accent);
+            box-shadow: 0 8px 22px rgba(249,115,22,0.3);
+        }
+        .device-icon {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        .device-name {
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+        .device-reward {
+            color: #facc15;
+            font-size: 0.9rem;
+        }
+        
+        .shop-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 24px;
+            justify-content: center;
+            margin-top: 30px;
+            max-height: 60vh;
+            overflow-y: auto;
+            padding: 10px;
+        }
+        .shop-item {
+            background: var(--shop-bg);
+            border-radius: 32px;
+            padding: 20px;
+            width: 260px;
+            text-align: center;
+            border: 1px solid rgba(249,115,22,0.3);
+            transition: 0.2s;
+        }
+        .shop-item h3 {
+            margin: 0 0 10px;
+            font-size: 1.3rem;
+            color: var(--accent);
+        }
+        .shop-item .price {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .shop-item .desc {
+            font-size: 0.85rem;
+            opacity: 0.8;
+            margin: 10px 0;
+        }
+        .shop-item button {
+            background: var(--accent);
+            border: none;
+            padding: 8px 20px;
+            border-radius: 40px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: 0.1s;
+        }
+        .shop-item button:disabled {
+            background: #2ecc71;
+            cursor: not-allowed;
+            opacity: 0.8;
+        }
+        .shop-item button.bought {
+            background: #2ecc71;
+        }
+
+        .workshop-layout { display: flex; flex-wrap: wrap; gap: 28px; position: relative; }
+        .canvas-area { position: relative; width: 500px; height: 500px; background: #11151f; border-radius: 36px; box-shadow: 0 0 0 3px var(--accent); overflow: hidden; }
+        #deviceSvg { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #1b2132; border-radius: 32px; }
+        #dirtCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; border-radius: 32px; cursor: crosshair; display: block; }
+        #sticker-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 15; }
+        .controls-panel { flex: 1; min-width: 320px; background: var(--panel-bg); backdrop-filter: blur(12px); border-radius: 36px; padding: 22px; }
+        .stage-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 20px; }
+        .stage-tab { background: #2c334a; border: none; padding: 6px 14px; border-radius: 40px; font-size: 0.75rem; cursor: pointer; transition: 0.1s; }
+        .stage-tab.active { background: var(--accent); color: black; font-weight: bold; box-shadow: 0 0 8px var(--accent-glow); }
+        .progress-bar { background: #2f3548; height: 12px; border-radius: 20px; margin: 15px 0; overflow: hidden; }
+        .progress-fill { width: 0%; height: 100%; background: var(--accent); transition: width 0.2s; }
+        button { background: var(--accent); border: none; padding: 8px 20px; border-radius: 60px; font-weight: bold; cursor: pointer; margin: 5px 5px 0 0; font-size: 0.85rem; transition: 0.1s; }
+        button:disabled { background: #555; cursor: not-allowed; opacity: 0.5; }
+        .power-btn { background: #2ecc71; box-shadow: 0 0 8px #2ecc71; }
+        .close-lid-btn { background: #2ecc71; animation: softPulse 1s infinite; }
+        @keyframes softPulse { 0% { transform: scale(1); } 50% { transform: scale(1.03); box-shadow: 0 0 12px #2ecc71; } 100% { transform: scale(1); } }
+        .lid-slide-out { transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1); transform: translateY(100%); }
+        .lid-slide-in { transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.4, 1.1); transform: translateY(0%); }
+        .boot-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: black; color: #0f0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 30; border-radius: 32px; font-family: monospace; }
+        .screw { cursor: pointer; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5)); transition: transform 0.2s ease, opacity 0.2s; transform-origin: center; pointer-events: visible; }
+        .screw.fly { transform: translate(180px, 80px) scale(0.2) rotate(360deg); opacity: 0; pointer-events: none; }
+        .tray-screw { width: 40px; height: 40px; background: radial-gradient(circle at 35% 35%, #cd7a32, #9b5e2c); border-radius: 50%; cursor: pointer; display: inline-block; margin: 6px; box-shadow: 0 2px 6px black; border: 1px solid #ffbb77; transition: 0.05s; }
+        .tray-screw.selected { border: 3px solid gold; transform: scale(1.1); box-shadow: 0 0 12px gold; }
+        .ghost-screw { stroke: #ffbb66; stroke-width: 2.5; fill: none; stroke-dasharray: 5 3; cursor: pointer; filter: drop-shadow(0 0 3px gold); transition: 0.1s; }
+        .ghost-screw:hover { stroke: white; stroke-width: 3; }
+        .color-swatch { width: 42px; height: 42px; border-radius: 50%; cursor: pointer; border: 2px solid white; display: inline-block; margin: 6px; }
+        .sticker { width: 68px; height: 68px; cursor: pointer; border-radius: 20px; background: #2f3548; margin: 6px; display: inline-flex; align-items: center; justify-content: center; overflow: hidden; border: 1px solid gold; transition: 0.1s; }
+        .sticker:hover { transform: scale(1.05); border-color: var(--accent); }
+        .sticker.selected { border: 3px solid var(--accent); box-shadow: 0 0 10px var(--accent); }
+        .design-panel, .sell-panel { background: #1e253b; border-radius: 28px; padding: 18px; margin-top: 18px; }
+        .sticker-gallery { max-height: 200px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding: 8px; background: rgba(0,0,0,0.3); border-radius: 20px; }
+        .sell-input { background: #0f121f; border: 2px solid var(--accent); border-radius: 60px; padding: 10px 20px; color: white; font-size: 1.2rem; width: 180px; text-align: center; transition: 0.2s; }
+        .price-highlight { border-color: #2ecc71 !important; box-shadow: 0 0 10px #2ecc71; background: #1e2a2a; }
+        .hidden { display: none !important; }
+        .tray { background: #0a0e18cc; backdrop-filter: blur(8px); border-radius: 24px; padding: 12px; margin-top: 16px; border: 2px dashed var(--accent); width: 100%; position: relative; z-index: 10005; }
+        .tray-title { font-size: 0.9rem; margin-bottom: 8px; color: var(--accent); }
+        #screwTrayItems { display: flex; flex-wrap: wrap; gap: 8px; min-height: 80px; }
+        #parts-tray { width: 100%; margin-top: 20px; transition: 0.2s; }
+        @media (max-width: 1200px) { .workshop-layout { flex-direction: column; } }
+        @media (max-width: 850px) { .canvas-area { width: 380px; height: 380px; } .sticker { width: 52px; height: 52px; } }
+        .sparkle-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: radial-gradient(circle, rgba(255,215,0,0.8) 0%, rgba(255,255,255,0) 70%); pointer-events: none; z-index: 20; animation: sparkleFade 0.8s ease-out forwards; }
+        @keyframes sparkleFade { 0% { opacity: 1; transform: scale(0.8); } 100% { opacity: 0; transform: scale(1.5); } }
+        .sell-btn-active { background: var(--accent) !important; box-shadow: 0 0 12px var(--accent-glow) !important; opacity: 1 !important; }
+        .xray-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 25; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { box-shadow: inset 0 0 10px rgba(255,200,0,0); } 50% { box-shadow: inset 0 0 30px rgba(255,200,0,0.6); } 100% { box-shadow: inset 0 0 10px rgba(255,200,0,0); } }
+        .review-popup { position: fixed; bottom: 30px; right: 30px; background: #1e2a3a; border-left: 4px solid var(--accent); border-radius: 16px; padding: 16px 24px; box-shadow: 0 10px 25px rgba(0,0,0,0.3); z-index: 20000; animation: slideIn 0.3s ease-out; backdrop-filter: blur(8px); max-width: 300px; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        .review-popup h4 { margin: 0 0 8px; color: var(--accent); }
+        .stars { font-size: 1.4rem; letter-spacing: 4px; margin: 8px 0; }
+        .review-popup button { margin-top: 10px; background: var(--accent); border: none; padding: 4px 16px; border-radius: 20px; cursor: pointer; }
+        .gold-sparkle { position: absolute; width: 40px; height: 40px; background: radial-gradient(circle, gold, orange); border-radius: 50%; pointer-events: none; animation: goldPulse 0.5s ease-out forwards; z-index: 100; }
+        @keyframes goldPulse { 0% { transform: scale(0); opacity: 1; } 100% { transform: scale(2); opacity: 0; } }
+    </style>
+
+    <!-- Yandex Games SDK -->
+    <script async src="/sdk.js" onload="initYandexSDK()"></script>
+</head>
+<body>
+<div class="game-container">
+    <div class="top-bar">
+        <div class="stats">
+            <div class="stat">💰 <span id="balanceLabel" data-i18n="balance">Balance:</span> <span id="coinsDisplay">1200</span></div>
+            <div class="stat">⭐ <span id="repDisplay">0</span></div>
+        </div>
+        <div class="nav-buttons">
+            <button id="navMenuBtn" class="nav-btn" data-i18n="menu">🏠 Menu</button>
+            <button id="navOrdersBtn" class="nav-btn" data-i18n="nav_orders">📋 Orders</button>
+            <button id="navWorkshopBtn" class="nav-btn" data-i18n="workshop">🔧 Workshop</button>
+            <button id="navShopBtn" class="nav-btn" data-i18n="shop">🛒 Shop</button>
+            <div class="gear-btn" id="settingsGearBtn">⚙️</div>
+        </div>
+    </div>
+    <div class="progress-tracker"><div class="progress-bar-container"><div class="progress-stage-fill" id="stageProgressFill"></div></div></div>
+
+    <div id="menu-screen" class="screen active">
+        <div style="text-align:center; margin:50px 0;">
+            <h1 style="color:var(--accent); font-size:2.8rem;" data-i18n="gameTitle">⚙️ MASTER REVIVE</h1>
+            <p style="font-size:1.2rem;" data-i18n="subtitle">Repair Simulator · 14 devices · ASMR sounds</p>
+            <button id="startGameBtn" class="nav-btn" style="font-size:1.3rem;" data-i18n="startRepair">▶️ START REPAIR</button>
+        </div>
+    </div>
+
+    <div id="orders-screen" class="screen">
+        <h2 data-i18n="selectDevice">📟 Select Device</h2>
+        <div class="device-grid" id="deviceGrid"></div>
+        <button id="backMenuFromOrders" data-i18n="back">⬅ Back</button>
+    </div>
+
+    <div id="workshop-screen" class="screen">
+        <div class="workshop-layout">
+            <div class="canvas-area" id="canvasArea">
+                <svg id="deviceSvg" viewBox="0 0 500 500"></svg>
+                <canvas id="dirtCanvas" width="500" height="500"></canvas>
+                <div id="sticker-layer"></div>
+            </div>
+            <div class="controls-panel">
+                <div class="stage-tabs" id="stageTabs"></div>
+                <div class="progress-bar"><div class="progress-fill" id="phaseProgress"></div></div>
+                <div id="phaseInstructions"></div>
+                <div id="phaseActions"></div>
+                <button id="nextPhaseBtn" class="hidden" data-i18n="nextStage">➡ Next Stage</button>
+                <button id="openLidBtn" class="hidden" data-i18n="openLid">🔓 OPEN LID</button>
+                <button id="closeLidBtn" class="close-lid-btn hidden" data-i18n="closeLid">🔒 CLOSE LID</button>
+                <button id="powerOnBtn" class="power-btn hidden" data-i18n="powerOn">⚡ POWER ON</button>
+                <button id="sellBtn" class="hidden" data-i18n="sellBtn">💰 SELL GADGET</button>
+                <div id="designPanel" class="design-panel hidden">
+                    <div><strong data-i18n="designTitle">🎨 DESIGN: select sticker & click on device</strong></div>
+                    <div id="colorPicker"></div>
+                    <div><strong data-i18n="stickerGalleryTitle">✨ STICKER GALLERY</strong></div>
+                    <div class="sticker-gallery" id="stickerGallery"></div>
+                    <div id="stickerFeedback" style="font-size:0.7rem; margin-top:6px;" data-i18n="stickerHint">Click sticker, then on device</div>
+                </div>
+                <div id="sellPanel" class="sell-panel hidden">
+                    <div><strong data-i18n="setPrice">💰 SET PRICE</strong></div>
+                    <div id="priceRange"></div>
+                    <input type="number" id="priceInput" class="sell-input" data-i18n-placeholder="enterPrice" placeholder="Enter amount">
+                    <button id="submitPriceBtn" disabled data-i18n="sellAndContinue">Sell & Continue</button>
+                    <div id="sellFeedback"></div>
+                </div>
+            </div>
+        </div>
+        <div id="parts-tray" class="tray hidden">
+            <div class="tray-title" data-i18n="screwTray">🔩 SCREW TRAY (click to select)</div>
+            <div id="screwTrayItems"></div>
+        </div>
+    </div>
+
+    <div id="shop-screen" class="screen">
+        <h2 data-i18n="shopTitle">🛒 WORKSHOP UPGRADES</h2>
+        <div class="shop-grid" id="shopGrid"></div>
+        <button id="backShopBtn" style="margin-top: 30px;" data-i18n="back">⬅ Back to Menu</button>
+    </div>
+</div>
+
+<!-- Settings Modal -->
+<div id="settingsModal" class="modal-overlay">
+    <div class="settings-modal">
+        <h2 data-i18n="settingsTitle">⚙️ SETTINGS</h2>
+        <div class="setting-row">
+            <span data-i18n="languageLabel">🌐 Language</span>
+            <div class="toggle-group" id="langToggleGroup">
+                <button id="lang-ru" class="toggle-btn lang-btn">RU</button>
+                <button id="lang-en" class="toggle-btn lang-btn">EN</button>
+            </div>
+        </div>
+        <div class="setting-row">
+            <span data-i18n="soundLabel">🔊 Sound</span>
+            <div class="toggle-group" id="soundToggleGroup">
+                <button id="sound-on" class="toggle-btn sound-btn">🔈 ON</button>
+                <button id="sound-off" class="toggle-btn sound-btn">🔇 OFF</button>
+            </div>
+        </div>
+        <button id="backToGameBtn" class="back-game-btn" data-i18n="backToGame">⬅ Back to Game</button>
+    </div>
+</div>
+
+<script>
+    // ========== SOUND MANAGER (with mute) ==========
+    let isMuted = false;
+    class SoundManager {
+        constructor() {
+            this.ctx = null;
+            this.initialized = false;
+            this.lastCleanTime = 0;
+            this.throttleDelay = 80;
+        }
+        init() {
+            if (this.ctx) return;
+            this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+            this.initialized = true;
+            if (this.ctx.state === 'suspended') this.ctx.resume();
+        }
+        _play(fn) { if (!isMuted && this.ctx) fn(); }
+        tone(freq, duration, volume = 0.1, type = 'sine') { this._play(() => { const now = this.ctx.currentTime; const osc = this.ctx.createOscillator(); const gain = this.ctx.createGain(); osc.type = type; osc.frequency.value = freq; gain.gain.setValueAtTime(volume, now); gain.gain.exponentialRampToValueAtTime(0.001, now + duration); osc.connect(gain); gain.connect(this.ctx.destination); osc.start(); osc.stop(now + duration); }); }
+        clean() { this._play(() => { if (!this.ctx) return; const now = this.ctx.currentTime; if (now - this.lastCleanTime < this.throttleDelay) return; this.lastCleanTime = now; const noise = this.ctx.createBufferSource(); const bufferSize = 2048; const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate); const data = buffer.getChannelData(0); for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1) * 0.4; noise.buffer = buffer; const filter = this.ctx.createBiquadFilter(); filter.type = 'lowpass'; filter.frequency.value = 1000; const gainNoise = this.ctx.createGain(); gainNoise.gain.setValueAtTime(0.15, now); gainNoise.gain.exponentialRampToValueAtTime(0.001, now + 0.1); noise.connect(filter); filter.connect(gainNoise); gainNoise.connect(this.ctx.destination); noise.start(); noise.stop(now + 0.1); const osc = this.ctx.createOscillator(); const gainOsc = this.ctx.createGain(); osc.type = 'sine'; osc.frequency.value = 2200; gainOsc.gain.setValueAtTime(0.05, now); gainOsc.gain.exponentialRampToValueAtTime(0.001, now + 0.08); osc.connect(gainOsc); gainOsc.connect(this.ctx.destination); osc.start(); osc.stop(now + 0.08); }); }
+        unscrew() { this.tone(660, 0.1, 0.12); this.tone(330, 0.08, 0.08, 'triangle'); }
+        screwInsert() { this.tone(550, 0.08, 0.1); }
+        repair(type) { this.tone(440, 0.15, 0.1); this.tone(120, 0.1, 0.05, 'triangle'); }
+        lidOpen() { this.tone(300, 0.25, 0.1); }
+        lidClose() { this.tone(200, 0.2, 0.1); }
+        powerOn() { this.tone(880, 0.15, 0.15); this.tone(440, 0.2, 0.12); }
+        sell() { this.tone(1200, 0.1, 0.15); this.tone(800, 0.1, 0.12); }
+        sticker() { this.tone(1000, 0.07, 0.08); }
+        sparkle() { this.tone(1800, 0.05, 0.1); this.tone(2200, 0.04, 0.08); }
+        gold() { this.tone(1500, 0.15, 0.2); }
+        ultrasonic() { this._play(() => { if (!this.ctx) return; const noise = this.ctx.createBufferSource(); const buffer = this.ctx.createBuffer(1, 4096, this.ctx.sampleRate); const data = buffer.getChannelData(0); for (let i = 0; i < 4096; i++) data[i] = (Math.random() * 2 - 1) * 0.25; noise.buffer = buffer; const gain = this.ctx.createGain(); gain.gain.setValueAtTime(0.12, this.ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.4); noise.connect(gain); gain.connect(this.ctx.destination); noise.start(); noise.stop(this.ctx.currentTime + 0.4); }); }
+        uiClick() { this.tone(880, 0.05, 0.06); }
+        uiTab() { this.tone(660, 0.04, 0.05); }
+        uiBuy() { this.tone(520, 0.12, 0.1); this.tone(780, 0.1, 0.08); }
+        uiNextPhase() { this.tone(600, 0.08, 0.1); this.tone(800, 0.06, 0.08); }
+        uiPriceValid() { this.tone(1000, 0.06, 0.08); }
+        uiError() { this.tone(200, 0.15, 0.08); }
+        swoosh() { this.tone(400, 0.2, 0.08, 'sawtooth'); }
+    }
+    const sounds = new SoundManager();
+    function ensureAudio() { if (!sounds.initialized) sounds.init(); else if (sounds.ctx && sounds.ctx.state === 'suspended') sounds.ctx.resume(); }
+    document.addEventListener('click', ensureAudio);
+    document.addEventListener('touchstart', ensureAudio);
+
+    // ========== COMPLETE TRANSLATIONS (RU/EN) ==========
+    const translations = {
+        ru: {
+            menu: "🏠 Меню",
+            nav_orders: "📋 Заказы",
+            workshop: "🔧 Мастерская",
+            shop: "🛒 Магазин",
+            settingsTitle: "⚙️ НАСТРОЙКИ",
+            languageLabel: "🌐 Язык",
+            soundLabel: "🔊 Звук",
+            backToGame: "⬅ Назад в игру",
+            balance: "Баланс:",
+            gameTitle: "⚙️ MASTER REVIVE",
+            subtitle: "Симулятор Мастера · 14 устройств · ASMR звуки",
+            startRepair: "▶️ НАЧАТЬ РЕМОНТ",
+            selectDevice: "📟 Выберите устройство",
+            back: "⬅ Назад",
+            stages: ["ЧИСТКА", "РАЗБОРКА", "РЕМОНТ", "СБОРКА", "ТЕСТ", "ДИЗАЙН", "ПРОДАЖА"],
+            nextStage: "➡ Следующий этап",
+            openLid: "🔓 СНЯТЬ КРЫШКУ",
+            closeLid: "🔒 ЗАКРЫТЬ КРЫШКУ",
+            powerOn: "⚡ ВКЛЮЧИТЬ",
+            sellBtn: "💰 ПРОДАТЬ ГАДЖЕТ",
+            designTitle: "🎨 ДИЗАЙН: выберите стикер и кликните на устройство",
+            stickerGalleryTitle: "✨ ГАЛЕРЕЯ СТИКЕРОВ",
+            stickerHint: "Кликните стикер, затем на устройство",
+            setPrice: "💰 УСТАНОВИТЬ ЦЕНУ",
+            enterPrice: "Введите сумму",
+            sellAndContinue: "Продать и продолжить",
+            screwTray: "🔩 ЛОТОК ДЛЯ ВИНТОВ (нажмите для выбора)",
+            shopTitle: "🛒 УЛУЧШЕНИЯ МАСТЕРСКОЙ",
+            devices: ["Смартфон", "Планшет", "Ноутбук", "Игровая консоль", "Видеокарта", "Геймпад", "Ретро-камера", "Дрон", "Умные часы", "Компьютерная мышь", "Клавиатура", "Электронная книга", "MP3 плеер", "Кассетный плеер"],
+            deviceIcons: ["📱", "📟", "💻", "🎮", "🎚️", "🎮", "📷", "🚁", "⌚", "🖱️", "⌨️", "📖", "🎵", "📼"],
+            electricScrewdriver: "🛠️ Электроотвертка",
+            xray: "⚡ Рентген-сканер",
+            robotHelper: "🤖 Робот-помощник",
+            ultraSolvent: "🧴 Растворитель",
+            priceRangeLabel: "💰 Диапазон цены:",
+            priceValid: "✅ Цена подходит!",
+            priceLow: "❌ Цена слишком низка",
+            priceHigh: "❌ Цена слишком высока",
+            notEnoughCoins: "❌ Недостаточно монет",
+            deviceSold: "✅ Гаджет продан!",
+            cleanSensor: "🧼 Очистите сенсор",
+            applyPaste: "🧴 Нанесите пасту",
+            connectWires: "🔌 Соедините провода",
+            replaceParts: "🔧 Замените детали",
+            thermalPasteHint: "Нанесите термопасту (5 кликов)"
+        },
+        en: {
+            menu: "🏠 Menu",
+            nav_orders: "📋 Orders",
+            workshop: "🔧 Workshop",
+            shop: "🛒 Shop",
+            settingsTitle: "⚙️ SETTINGS",
+            languageLabel: "🌐 Language",
+            soundLabel: "🔊 Sound",
+            backToGame: "⬅ Back to Game",
+            balance: "Balance:",
+            gameTitle: "⚙️ MASTER REVIVE",
+            subtitle: "Repair Simulator · 14 devices · ASMR sounds",
+            startRepair: "▶️ START REPAIR",
+            selectDevice: "📟 Select Device",
+            back: "⬅ Back",
+            stages: ["CLEANING", "DISASSEMBLY", "REPAIR", "ASSEMBLY", "TEST", "DESIGN", "SELL"],
+            nextStage: "➡ Next Stage",
+            openLid: "🔓 OPEN LID",
+            closeLid: "🔒 CLOSE LID",
+            powerOn: "⚡ POWER ON",
+            sellBtn: "💰 SELL GADGET",
+            designTitle: "🎨 DESIGN: select sticker & click on device",
+            stickerGalleryTitle: "✨ STICKER GALLERY",
+            stickerHint: "Click sticker, then on device",
+            setPrice: "💰 SET PRICE",
+            enterPrice: "Enter amount",
+            sellAndContinue: "Sell & Continue",
+            screwTray: "🔩 SCREW TRAY (click to select)",
+            shopTitle: "🛒 WORKSHOP UPGRADES",
+            devices: ["Smartphone", "Tablet", "Laptop", "Game Console", "Graphics Card", "Gamepad", "Retro Camera", "Drone", "Smart Watch", "Computer Mouse", "Keyboard", "E-book", "MP3 Player", "Cassette Player"],
+            deviceIcons: ["📱", "📟", "💻", "🎮", "🎚️", "🎮", "📷", "🚁", "⌚", "🖱️", "⌨️", "📖", "🎵", "📼"],
+            electricScrewdriver: "🛠️ Electric Screwdriver",
+            xray: "⚡ X-Ray Scanner",
+            robotHelper: "🤖 Robot Helper",
+            ultraSolvent: "🧴 Ultra Solvent",
+            priceRangeLabel: "💰 Price range:",
+            priceValid: "✅ Price is valid!",
+            priceLow: "❌ Price too low",
+            priceHigh: "❌ Price too high",
+            notEnoughCoins: "❌ Not enough coins",
+            deviceSold: "✅ Device sold!",
+            cleanSensor: "🧼 Clean sensor",
+            applyPaste: "🧴 Apply paste",
+            connectWires: "🔌 Connect wires",
+            replaceParts: "🔧 Replace parts",
+            thermalPasteHint: "Apply thermal paste (5 clicks)"
+        }
+    };
+
+    let currentLang = "en";
+    let stageNames = translations.en.stages;
+
+    function applyTranslations() {
+        const t = translations[currentLang];
+        document.querySelectorAll('[data-i18n]').forEach(el => {
+            const key = el.getAttribute('data-i18n');
+            if (t[key]) el.innerHTML = t[key];
+        });
+        document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+            const key = el.getAttribute('data-i18n-placeholder');
+            if (t[key]) el.placeholder = t[key];
+        });
+        if (typeof renderStageTabs === 'function') renderStageTabs();
+        if (window.game && game.device) {
+            if (game.stage === 6) updateSellPanel();
+            if (game.stage === 2) phaseInstructions.innerText = t.applyPaste;
+        }
+        renderDevices();
+        renderShop();
+        document.getElementById('balanceLabel').innerHTML = t.balance;
+    }
+
+    function setLanguage(lang) {
+        currentLang = lang;
+        localStorage.setItem('game_lang', lang);
+        stageNames = translations[lang].stages;
+        applyTranslations();
+        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active-lang'));
+        document.getElementById(`lang-${lang}`)?.classList.add('active-lang');
+    }
+
+    function setMute(mute) {
+        isMuted = mute;
+        localStorage.setItem('game_muted', mute);
+        const soundOn = document.getElementById('sound-on');
+        const soundOff = document.getElementById('sound-off');
+        if (soundOn && soundOff) {
+            if (!mute) { soundOn.classList.add('active'); soundOff.classList.remove('active'); }
+            else { soundOff.classList.add('active'); soundOn.classList.remove('active'); }
+        }
+    }
+
+    // Load saved settings
+    const savedLang = localStorage.getItem('game_lang');
+    if (savedLang === 'ru') currentLang = 'ru';
+    const savedMute = localStorage.getItem('game_muted');
+    if (savedMute === 'true') isMuted = true;
+
+    // ========== FULL GAME LOGIC ==========
+    const DEFS = `<defs><filter id="shadow" x="-0.2" y="-0.2" width="1.6" height="1.6"><feGaussianBlur in="SourceAlpha" stdDeviation="2"/><feOffset dx="2" dy="2"/><feComponentTransfer><feFuncA type="linear" slope="0.3"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter><linearGradient id="pcbGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#1d7846"/><stop offset="100%" stop-color="#0f5432"/></linearGradient><linearGradient id="metalGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#d5dce8"/><stop offset="100%" stop-color="#9aaec2"/></linearGradient><radialGradient id="glassGrad" cx="50%" cy="50%" r="50%"><stop offset="0%" stop-color="#cceeff" stop-opacity="0.9"/><stop offset="100%" stop-color="#4488aa" stop-opacity="0.5"/></radialGradient><linearGradient id="chromeGrad" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#f0f0f0"/><stop offset="50%" stop-color="#c0c0c0"/><stop offset="100%" stop-color="#a0a0a0"/></linearGradient></defs>`;
+
+    const deviceSpecs = [
+        { name:"Смартфон", base:480, screws:4, repair:"battery", shape:"phone", screwPos: [[140,100],[360,100],[140,400],[360,400]], hasLoot: false },
+        { name:"Планшет", base:620, screws:4, repair:"glue", shape:"tablet", screwPos: [[70,70],[430,70],[70,430],[430,430]], hasLoot: false },
+        { name:"Ноутбук", base:880, screws:6, repair:"fanRam", shape:"laptop", screwPos: [[70,120],[430,120],[70,290],[430,290],[180,305],[320,305]], hasLoot: false },
+        { name:"Игровая консоль", base:560, screws:6, repair:"dustClouds", shape:"console", screwPos: [[80,80],[420,80],[80,420],[420,420],[250,80],[250,420]], hasLoot: false },
+        { name:"Видеокарта", base:760, screws:5, repair:"thermal", shape:"gpu", screwPos: [[110,90],[390,90],[110,410],[390,410],[250,250]], hasLoot: true },
+        { name:"Геймпад", base:400, screws:4, repair:"swab", shape:"gamepad", screwPos: [[100,130],[400,130],[100,370],[400,370]], hasLoot: false },
+        { name:"Ретро-камера", base:520, screws:4, repair:"lensScrub", shape:"camera", screwPos: [[140,80],[360,80],[140,420],[360,420]], hasLoot: true },
+        { name:"Дрон", base:680, screws:5, repair:"propsAlign", shape:"drone", screwPos: [[120,140],[380,140],[120,360],[380,360],[250,250]], hasLoot: false },
+        { name:"Умные часы", base:350, screws:4, repair:"gearTweezer", shape:"watch", screwPos: [[150,150],[350,150],[150,350],[350,350]], hasLoot: false },
+        { name:"Компьютерная мышь", base:300, screws:4, repair:"teflon", shape:"mouse", screwPos: [[130,170],[370,170],[130,330],[370,330]], hasLoot: false },
+        { name:"Клавиатура", base:540, screws:6, repair:"shakeCrumbs", shape:"keyboard", screwPos: [[40,90],[460,90],[40,430],[460,430],[250,90],[250,430]], hasLoot: false },
+        { name:"Электронная книга", base:490, screws:4, repair:"inkWipe", shape:"ebook", screwPos: [[100,60],[400,60],[100,440],[400,440]], hasLoot: false },
+        { name:"MP3 плеер", base:280, screws:4, repair:"wheelRotate", shape:"mp3", screwPos: [[180,80],[320,80],[180,420],[320,420]], hasLoot: false },
+        { name:"Кассетный плеер", base:380, screws:5, repair:"pencilRewind", shape:"cassette", screwPos: [[100,90],[400,90],[100,410],[400,410],[250,250]], hasLoot: true }
+    ];
+
+    function buildCaseSVG(shape, name) {
+        let body = "", details = "";
+        if(shape === "phone") {
+            body = `<path d="M85,40 L415,40 C428,40 435,47 435,60 L435,440 C435,453 428,460 415,460 L85,460 C72,460 65,453 65,440 L65,60 C65,47 72,40 85,40Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            details += `<ellipse cx="250" cy="30" rx="45" ry="12" fill="#111" />`;
+            const camX = 380, camY = 85;
+            details += `<circle cx="${camX-12}" cy="${camY-8}" r="10" fill="#111" /><circle cx="${camX-12}" cy="${camY-8}" r="5" fill="#444" />`;
+            details += `<circle cx="${camX+2}" cy="${camY+2}" r="9" fill="#111" /><circle cx="${camX+2}" cy="${camY+2}" r="4" fill="#444" />`;
+            details += `<circle cx="${camX+14}" cy="${camY-5}" r="8" fill="#111" /><circle cx="${camX+14}" cy="${camY-5}" r="3.5" fill="#444" />`;
+            details += `<rect x="${camX+22}" y="${camY-5}" width="8" height="8" rx="2" fill="#ccc" />`;
+        } else if(shape === "tablet") {
+            body = `<path d="M45,40 L455,40 C470,40 475,45 475,60 L475,440 C475,455 470,460 455,460 L45,460 C30,460 25,455 25,440 L25,60 C25,45 30,40 45,40Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            details += `<rect x="50" y="55" width="400" height="390" rx="12" fill="#111" />`;
+            details += `<circle cx="250" cy="35" r="6" fill="#222" /><circle cx="250" cy="35" r="3" fill="#444" />`;
+            details += `<rect x="240" y="430" width="20" height="20" rx="3" fill="#666" />`;
+            details += `<rect x="242" y="432" width="16" height="16" rx="2" fill="#888" />`;
+        } else if(shape === "laptop") {
+            body = `<rect x="20" y="80" width="460" height="330" rx="12" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            details += `<rect x="30" y="90" width="440" height="300" rx="8" fill="#2a2f3f" />`;
+            for (let row=0; row<5; row++) {
+                for (let col=0; col<12; col++) {
+                    let x = 50 + col*32;
+                    let y = 110 + row*42;
+                    if (row===4 && col===5) {
+                        details += `<rect x="${x}" y="${y}" width="140" height="28" rx="4" fill="#ddd" stroke="#777" />`;
+                        col += 5;
+                    } else {
+                        details += `<rect x="${x}" y="${y}" width="28" height="28" rx="4" fill="#eee" stroke="#777" />`;
+                    }
+                }
+            }
+            details += `<rect x="180" y="345" width="140" height="40" rx="8" fill="#bbb" stroke="#888" />`;
+            details += `<rect x="30" y="20" width="440" height="60" rx="8" fill="#111" stroke="#aaa" stroke-width="2" />`;
+            details += `<rect x="35" y="25" width="430" height="50" rx="4" fill="#0a0f1a" />`;
+            details += `<circle cx="250" cy="22" r="4" fill="#444" />`;
+            details += `<line x1="30" y1="80" x2="470" y2="80" stroke="#888" stroke-width="2" stroke-dasharray="5 3" />`;
+        } else if(shape === "console") {
+            body = `<path d="M55,55 L445,55 C460,55 465,60 465,75 L465,425 C465,440 460,445 445,445 L55,445 C40,445 35,440 35,425 L35,75 C35,60 40,55 55,55Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            details += `<rect x="110" y="100" width="280" height="300" rx="16" fill="#111" />`;
+            details += `<path d="M40,150 L80,150 L80,350 L40,350 C30,350 25,340 25,330 L25,170 C25,160 30,150 40,150Z" fill="#e34234" stroke="#a00" stroke-width="2" />`;
+            details += `<circle cx="60" cy="250" r="15" fill="#333" /><circle cx="60" cy="210" r="6" fill="#888" /><circle cx="60" cy="290" r="6" fill="#888" />`;
+            details += `<path d="M460,150 L420,150 L420,350 L460,350 C470,350 475,340 475,330 L475,170 C475,160 470,150 460,150Z" fill="#3a6ea5" stroke="#00a" stroke-width="2" />`;
+            details += `<circle cx="440" cy="250" r="15" fill="#333" /><circle cx="440" cy="210" r="6" fill="#888" /><circle cx="440" cy="290" r="6" fill="#888" />`;
+        } else if(shape === "watch") {
+            body = `<path d="M125,125 L375,125 C395,125 400,130 400,150 L400,350 C400,370 395,375 375,375 L125,375 C105,375 100,370 100,350 L100,150 C100,130 105,125 125,125Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            details += `<rect x="125" y="80" width="250" height="35" rx="10" fill="#5a4a3a" />`;
+            details += `<rect x="125" y="385" width="250" height="35" rx="10" fill="#5a4a3a" />`;
+            details += `<circle cx="385" cy="250" r="12" fill="#bbb" /><circle cx="385" cy="250" r="6" fill="#888" />`;
+            details += `<rect x="140" y="150" width="220" height="200" rx="20" fill="#111" />`;
+        } else if(shape === "keyboard") {
+            body = `<path d="M20,70 L480,70 C495,70 500,75 500,90 L500,430 C500,445 495,450 480,450 L20,450 C5,450 0,445 0,430 L0,90 C0,75 5,70 20,70Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            const rgbDef = `<linearGradient id="rgbGlow" x1="0%" y1="0%" x2="100%" y2="100%"><stop offset="0%" stop-color="#ff0000"/><stop offset="33%" stop-color="#00ff00"/><stop offset="66%" stop-color="#0000ff"/><stop offset="100%" stop-color="#ff00ff"/></linearGradient>`;
+            body = rgbDef + body;
+            details += `<rect x="10" y="60" width="480" height="400" fill="url(#rgbGlow)" opacity="0.3" />`;
+            const rows = 4, cols = 14;
+            const keyW = 32, keyH = 45;
+            const startX = 35, startY = 95, rowGap = 6;
+            for(let row = 0; row < rows; row++) {
+                const y = startY + row * (keyH + rowGap);
+                for(let col = 0; col < cols; col++) {
+                    const x = startX + col * keyW;
+                    details += `<rect x="${x}" y="${y}" width="${keyW-2}" height="${keyH-2}" rx="5" fill="#222" stroke="#888" stroke-width="0.8"/>`;
+                    details += `<rect x="${x-1}" y="${y-1}" width="${keyW}" height="${keyH}" rx="6" fill="none" stroke="url(#rgbGlow)" stroke-width="1.5" opacity="0.6"/>`;
+                }
+            }
+            details += `<rect x="180" y="395" width="140" height="35" rx="8" fill="#333" stroke="#aaa"/>`;
+            details += `<circle cx="470" cy="65" r="4" fill="#ff4444" /><circle cx="460" cy="65" r="4" fill="#44ff44" /><circle cx="450" cy="65" r="4" fill="#4444ff" />`;
+        } else if(shape === "mouse") {
+            body = `<path d="M100,140 L400,140 C430,140 440,150 440,180 L440,320 C440,350 430,360 400,360 L100,360 C70,360 60,350 60,320 L60,180 C60,150 70,140 100,140Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            details = `<path d="M220,220 L280,220 L280,260 L220,260 Z" fill="#333" stroke="#aaa"/><circle cx="250" cy="180" r="12" fill="#555"/><rect x="170" y="300" width="30" height="8" rx="4" fill="#666"/><rect x="300" y="300" width="30" height="8" rx="4" fill="#666"/><rect x="220" y="320" width="60" height="8" rx="4" fill="#666"/><rect x="140" y="210" width="20" height="40" fill="#ccc"/><rect x="340" y="210" width="20" height="40" fill="#ccc"/>`;
+        } else if(shape === "ebook") {
+            body = `<path d="M75,40 L425,40 C440,40 445,45 445,60 L445,440 C445,455 440,460 425,460 L75,460 C60,460 55,455 55,440 L55,60 C55,45 60,40 75,40Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            details = `<rect x="85" y="70" width="330" height="360" rx="12" fill="#d0d0d0"/><rect x="30" y="200" width="18" height="100" rx="4" fill="#888"/><rect x="452" y="200" width="18" height="100" rx="4" fill="#888"/>`;
+        } else if(shape === "mp3") {
+            body = `<path d="M150,50 L350,50 C370,50 380,60 380,80 L380,420 C380,440 370,450 350,450 L150,450 C130,450 120,440 120,420 L120,80 C120,60 130,50 150,50Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            details = `<rect x="180" y="80" width="140" height="50" fill="#111" rx="6"/><circle cx="250" cy="300" r="70" fill="#ddd"/><circle cx="250" cy="300" r="60" fill="#ccc"/><circle cx="250" cy="300" r="40" fill="#aaa"/><circle cx="250" cy="300" r="15" fill="#666"/><path d="M250,250 L260,300 L250,310 L240,300 Z" fill="#444"/>`;
+        } else if(shape === "cassette") {
+            body = `<path d="M80,60 L420,60 C435,60 440,65 440,80 L440,420 C440,435 435,440 420,440 L80,440 C65,440 60,435 60,420 L60,80 C60,65 65,60 80,60Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            details = `<rect x="120" y="100" width="260" height="180" fill="#111" rx="8"/><circle cx="180" cy="190" r="40" fill="gold"/><circle cx="320" cy="190" r="40" fill="gold"/><rect x="150" y="300" width="200" height="40" fill="#444"/><rect x="180" y="360" width="40" height="30" fill="#888"/><rect x="280" y="360" width="40" height="30" fill="#888"/>`;
+        } else if(shape === "gamepad") {
+            body = `<path d="M70,100 L430,100 C450,100 460,110 460,130 L460,370 C460,390 450,400 430,400 L70,400 C50,400 40,390 40,370 L40,130 C40,110 50,100 70,100Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            details = `<circle cx="150" cy="250" r="35" fill="#2c3e50"/><circle cx="350" cy="250" r="35" fill="#2c3e50"/><circle cx="100" cy="190" r="14" fill="red"/><circle cx="100" cy="310" r="14" fill="blue"/><circle cx="400" cy="190" r="14" fill="green"/><circle cx="400" cy="310" r="14" fill="yellow"/><path d="M250,310 L270,330 L250,350 L230,330 Z" fill="#666"/>`;
+        } else if(shape === "drone") {
+            body = `<path d="M250,70 L420,180 L380,320 L250,430 L120,320 L80,180 Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            details = `<circle cx="250" cy="250" r="35" fill="#222"/><circle cx="180" cy="180" r="20" fill="#888"/><circle cx="320" cy="180" r="20" fill="#888"/><circle cx="180" cy="320" r="20" fill="#888"/><circle cx="320" cy="320" r="20" fill="#888"/>`;
+        } else if(shape === "gpu") {
+            body = `<path d="M80,70 L420,70 C435,70 440,75 440,90 L440,410 C440,425 435,430 420,430 L80,430 C65,430 60,425 60,410 L60,90 C60,75 65,70 80,70Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            details = `<circle cx="170" cy="250" r="45" fill="#2c3e50"/><circle cx="330" cy="250" r="45" fill="#2c3e50"/><rect x="30" y="410" width="40" height="15" fill="gold"/><rect x="430" y="410" width="40" height="15" fill="gold"/><path d="M210,140 L290,140 L280,180 L220,180 Z" fill="#b87333"/>`;
+        } else if(shape === "camera") {
+            body = `<path d="M120,55 L380,55 C395,55 400,60 400,75 L400,425 C400,440 395,445 380,445 L120,445 C105,445 100,440 100,425 L100,75 C100,60 105,55 120,55Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+            details = `<circle cx="250" cy="250" r="75" fill="#111"/><circle cx="250" cy="250" r="55" fill="#222"/><circle cx="250" cy="250" r="35" fill="url(#glassGrad)"/><path d="M340,160 L390,190 L340,220 Z" fill="silver"/>`;
+        } else {
+            body = `<path d="M75,60 L425,60 C440,60 445,65 445,80 L445,420 C445,435 440,440 425,440 L75,440 C60,440 55,435 55,420 L55,80 C55,65 60,60 75,60Z" fill="url(#metalGrad)" stroke="#aaa" stroke-width="2.5" filter="url(#shadow)"/>`;
+        }
+        return DEFS + body + details;
+    }
+
+    function internalPCB(shape) {
+        if(shape === "phone") return `<path d="M85,40 L415,40 C428,40 435,47 435,60 L435,440 C435,453 428,460 415,460 L85,460 C72,460 65,453 65,440 L65,60 C65,47 72,40 85,40Z" fill="url(#pcbGrad)" stroke="#2ecc71" stroke-width="2"/>`;
+        if(shape === "laptop") return `<rect x="20" y="80" width="460" height="330" rx="12" fill="url(#pcbGrad)" stroke="#2ecc71" stroke-width="2"/>`;
+        return `<rect x="40" y="40" width="420" height="420" fill="url(#pcbGrad)" stroke="#2ecc71" stroke-width="2" rx="28"/>`;
+    }
+
+    const DEVICES = deviceSpecs.map((spec, idx) => {
+        const maxPrice = Math.floor(spec.base * 1.6);
+        return { ...spec, id: idx, minPrice: spec.base, maxPrice: maxPrice, caseSvg: () => buildCaseSVG(spec.shape, spec.name), internalsSvg: () => internalPCB(spec.shape) };
+    });
+
+    // UPGRADES
+    let upgrades = {
+        screwdriver: false, brush: false, ultrasonic: false, license: false,
+        goldenScrews: false, vipStickers: false, xray: false, autoAssembler: false,
+        chrome: false, megaMagnet: false, robotAssistant: false, priceScanner: false,
+        premiumThermalPaste: false, magneticMat: false
+    };
+    const UPGRADE_PRICES = {
+        screwdriver: 500, brush: 400, ultrasonic: 800, license: 1000,
+        goldenScrews: 1200, vipStickers: 600, xray: 700, autoAssembler: 1500,
+        chrome: 900, megaMagnet: 1100, robotAssistant: 2000, priceScanner: 800,
+        premiumThermalPaste: 600, magneticMat: 500
+    };
+    function loadUpgrades() { const saved = localStorage.getItem('mr_upgrades'); if (saved) try { upgrades = { ...upgrades, ...JSON.parse(saved) }; } catch(e) {} }
+    function saveUpgrades() { localStorage.setItem('mr_upgrades', JSON.stringify(upgrades)); }
+
+    // Game state
+    let player = { coins: 1200, rep: 0, currentDeviceIndex: 0 };
+    let game = {
+        stage: 0, screwsRemoved: 0, screwsInTray: 0, screwsReinserted: 0, totalScrews: 0,
+        repairDone: false, repairProgress: 0, repairRequired: 1, selectedTrayScrew: null,
+        device: null, screwPositions: [], ghostHoles: [], cleaningProgress: 0,
+        goldFound: false, thermalPasteBonus: false
+    };
+    let selectedStickerUrl = null;
+
+    let deviceSvg = document.getElementById('deviceSvg');
+    let dirtCanvas = document.getElementById('dirtCanvas');
+    let ctx = dirtCanvas.getContext('2d');
+    let partsTray = document.getElementById('parts-tray');
+    let screwTrayItemsDiv = document.getElementById('screwTrayItems');
+    let designPanel = document.getElementById('designPanel');
+    let sellPanel = document.getElementById('sellPanel');
+    let phaseInstructions = document.getElementById('phaseInstructions');
+    let phaseProgressDiv = document.getElementById('phaseProgress');
+    let stageProgressFill = document.getElementById('stageProgressFill');
+    let stageTabsContainer = document.getElementById('stageTabs');
+    let nextPhaseBtn = document.getElementById('nextPhaseBtn');
+    let openLidBtn = document.getElementById('openLidBtn');
+    let closeLidBtn = document.getElementById('closeLidBtn');
+    let powerOnBtn = document.getElementById('powerOnBtn');
+    let sellBtn = document.getElementById('sellBtn');
+    let stickerFeedback = document.getElementById('stickerFeedback');
+    let priceInput = document.getElementById('priceInput');
+    let submitPriceBtn = document.getElementById('submitPriceBtn');
+    let priceRangeDiv = document.getElementById('priceRange');
+    let sellFeedback = document.getElementById('sellFeedback');
+    let shopGrid = document.getElementById('shopGrid');
+
+    function updateStageProgress() { stageProgressFill.style.width = (game.stage/6)*100 + "%"; }
+    function updatePhaseProgress() {
+        let percent = 0;
+        if(game.stage===0) percent = game.cleaningProgress;
+        else if(game.stage===1) percent = (game.screwsRemoved / game.totalScrews) * 100;
+        else if(game.stage===2) percent = game.repairDone ? 100 : (game.repairProgress / game.repairRequired) * 100;
+        else if(game.stage===3) percent = (game.screwsReinserted / game.totalScrews) * 100;
+        else percent = 100;
+        phaseProgressDiv.style.width = percent + "%";
+    }
+
+    function renderStageTabs() {
+        stageTabsContainer.innerHTML = stageNames.map((name, idx) => `<button class="stage-tab ${idx === game.stage ? 'active' : ''}" data-stage="${idx}">${name}</button>`).join('');
+        document.querySelectorAll('.stage-tab').forEach(tab => tab.addEventListener('click', () => sounds.uiTab()));
+    }
+
+    function updateUI() {
+        renderStageTabs();
+        nextPhaseBtn.classList.add('hidden');
+        openLidBtn.classList.add('hidden');
+        closeLidBtn.classList.add('hidden');
+        powerOnBtn.classList.add('hidden');
+        sellBtn.classList.add('hidden');
+        partsTray.classList.add('hidden');
+        designPanel.classList.add('hidden');
+        sellPanel.classList.add('hidden');
+
+        if(game.stage === 0) {
+            dirtCanvas.style.pointerEvents = 'auto';
+            phaseInstructions.innerText = translations[currentLang].cleanSensor;
+            if (upgrades.xray && !document.querySelector('.xray-overlay')) {
+                const overlay = document.createElement('div');
+                overlay.className = 'xray-overlay';
+                document.querySelector('.canvas-area').appendChild(overlay);
+            }
+        } else if(game.stage === 1) {
+            dirtCanvas.style.pointerEvents = 'none';
+            partsTray.classList.remove('hidden');
+            phaseInstructions.innerText = "🔩 Click screws to remove them.";
+            updateScrewTrayUI();
+            if (upgrades.xray && document.querySelector('.xray-overlay')) document.querySelector('.xray-overlay').remove();
+        } else if(game.stage === 2) {
+            phaseInstructions.innerText = translations[currentLang].applyPaste;
+            initRepairTask();
+        } else if(game.stage === 3) {
+            closeLidBtn.classList.remove('hidden');
+            phaseInstructions.innerText = "🔒 Click 'CLOSE LID' to start assembly.";
+            partsTray.classList.remove('hidden');
+            updateScrewTrayUI();
+        } else if(game.stage === 4) {
+            if(game.screwsReinserted === game.totalScrews) powerOnBtn.classList.remove('hidden');
+            phaseInstructions.innerText = "⚡ Click 'POWER ON' to test.";
+        } else if(game.stage === 5) {
+            designPanel.classList.remove('hidden');
+            sellBtn.classList.remove('hidden');
+            phaseInstructions.innerText = "🎨 Decorate the gadget!";
+            setupDesignMode();
+        } else if(game.stage === 6) {
+            sellPanel.classList.remove('hidden');
+            phaseInstructions.innerText = "💰 Set a price within the range to sell.";
+            updateSellPanel();
+        }
+        updatePhaseProgress();
+    }
+
+    function updateSellPanel() {
+        if(!game.device) return;
+        let min = game.device.minPrice;
+        let max = game.device.maxPrice;
+        if (upgrades.license) max = Math.floor(max * 1.3);
+        if (upgrades.goldenScrews) max = Math.floor(max * 1.1);
+        if (game.goldFound) max += 300;
+        if (game.thermalPasteBonus) max = Math.floor(max * 1.15);
+        priceRangeDiv.innerHTML = `${translations[currentLang].priceRangeLabel} $${min} - $${max}`;
+        submitPriceBtn.disabled = true;
+        submitPriceBtn.classList.remove('sell-btn-active');
+        sellFeedback.innerHTML = '';
+        priceInput.value = '';
+        priceInput.classList.remove('price-highlight');
+        priceInput.oninput = () => {
+            const val = parseInt(priceInput.value);
+            if (!isNaN(val) && val >= min && val <= max) {
+                submitPriceBtn.disabled = false;
+                submitPriceBtn.classList.add('sell-btn-active');
+                sellFeedback.innerHTML = translations[currentLang].priceValid;
+                sounds.uiPriceValid();
+                if (upgrades.priceScanner && val === max) priceInput.classList.add('price-highlight');
+                else priceInput.classList.remove('price-highlight');
+            } else if (!isNaN(val) && val < min) {
+                submitPriceBtn.disabled = true;
+                submitPriceBtn.classList.remove('sell-btn-active');
+                sellFeedback.innerHTML = translations[currentLang].priceLow;
+                priceInput.classList.remove('price-highlight');
+                sounds.uiError();
+            } else if (!isNaN(val) && val > max) {
+                submitPriceBtn.disabled = true;
+                submitPriceBtn.classList.remove('sell-btn-active');
+                sellFeedback.innerHTML = translations[currentLang].priceHigh;
+                priceInput.classList.remove('price-highlight');
+                sounds.uiError();
+            } else {
+                submitPriceBtn.disabled = true;
+                submitPriceBtn.classList.remove('sell-btn-active');
+                sellFeedback.innerHTML = '';
+                priceInput.classList.remove('price-highlight');
+            }
+        };
+        priceInput.focus();
+    }
+
+    function nextPhase() {
+        if(game.stage === 0 && game.cleaningProgress >= 85) { game.stage = 1; updateUI(); sounds.uiNextPhase(); }
+        else if(game.stage === 1 && game.screwsRemoved === game.totalScrews) { openLidBtn.classList.remove('hidden'); phaseInstructions.innerText = "All screws removed! Click 'OPEN LID'."; sounds.uiNextPhase(); }
+        else if(game.stage === 2 && game.repairDone) { game.stage = 3; updateUI(); sounds.uiNextPhase(); }
+        else if(game.stage === 3 && game.screwsReinserted === game.totalScrews) { game.stage = 4; updateUI(); sounds.uiNextPhase(); }
+    }
+
+    function updateScrewTrayUI() {
+        screwTrayItemsDiv.innerHTML = '';
+        for(let i=0;i<game.screwsInTray;i++) {
+            let ts = document.createElement('div');
+            ts.className = 'tray-screw';
+            if(game.selectedTrayScrew === i) ts.classList.add('selected');
+            ts.addEventListener('click', (e) => {
+                e.stopPropagation();
+                if(game.stage === 3) {
+                    game.selectedTrayScrew = game.selectedTrayScrew === i ? null : i;
+                    updateScrewTrayUI();
+                    phaseInstructions.innerText = game.selectedTrayScrew !== null ? "Screw selected! Click on a ghost hole." : "Select a screw from the tray.";
+                    sounds.uiClick();
+                }
+            });
+            screwTrayItemsDiv.appendChild(ts);
+        }
+    }
+
+    function openLid() {
+        if(game.stage !== 1) return;
+        sounds.lidOpen();
+        let caseGroup = document.getElementById('caseGroup');
+        caseGroup.classList.add('lid-slide-out');
+        setTimeout(() => {
+            caseGroup.style.display = "none";
+            document.getElementById('internalsGroup').style.display = "block";
+            game.stage = 2;
+            updateUI();
+            openLidBtn.classList.add('hidden');
+        }, 350);
+    }
+
+    function initRepairTask() {
+        let targetGroup = document.getElementById('repairTargetGroup');
+        targetGroup.innerHTML = '';
+        let rt = game.device.repairType;
+        game.repairProgress = 0;
+        game.repairRequired = 1;
+        game.repairDone = false;
+
+        if (rt === "thermal" && upgrades.premiumThermalPaste && !game.thermalPasteBonus) {
+            game.repairRequired = 1;
+            targetGroup.innerHTML = `<rect x="190" y="200" width="120" height="100" fill="#2c3e50" stroke="gold" id="chip"/><text x="250" y="340" fill="white">${translations[currentLang].thermalPasteHint}</text>`;
+            let clicks = 0;
+            document.getElementById('chip').addEventListener('click', () => {
+                if(!game.repairDone && clicks < 5) {
+                    clicks++;
+                    sounds.repair(rt);
+                    if (clicks === 5) {
+                        game.repairDone = true;
+                        game.thermalPasteBonus = true;
+                        updatePhaseProgress();
+                        closeLidBtn.classList.remove('hidden');
+                        phaseInstructions.innerText = "✅ " + (currentLang === 'ru' ? "Термопаста нанесена! +15% к цене! Закройте крышку." : "Thermal paste applied! +15% price! Close lid.");
+                    }
+                }
+            });
+            return;
+        }
+
+        if(rt === "battery") {
+            targetGroup.innerHTML = `<rect x="180" y="210" width="140" height="80" fill="#b91c1c"/><rect x="180" y="310" width="140" height="80" fill="#2ecc71" id="newBatt" draggable="true"/><text x="250" y="360" fill="white">${translations[currentLang].replaceParts}</text>`;
+            document.getElementById('newBatt').addEventListener('dragstart', e => e.dataTransfer.setData("text","green"));
+            targetGroup.addEventListener('dragover', e => e.preventDefault());
+            targetGroup.addEventListener('drop', () => { if(!game.repairDone){ sounds.repair(rt); game.repairDone=true; updatePhaseProgress(); closeLidBtn.classList.remove('hidden'); phaseInstructions.innerText="✅ "+(currentLang === 'ru'?"Батарея заменена! Закройте крышку.":"Battery replaced! Close lid."); } });
+        } else if(rt === "glue") {
+            game.repairRequired = 3;
+            targetGroup.innerHTML = `<rect x="70" y="70" width="360" height="360" fill="none" stroke="white" stroke-width="3" id="glueArea"/><text x="250" y="460" fill="yellow">${translations[currentLang].applyPaste} (3x)</text>`;
+            document.getElementById('glueArea').addEventListener('click', () => {
+                if(!game.repairDone && game.repairProgress < game.repairRequired) {
+                    game.repairProgress++;
+                    sounds.repair(rt);
+                    updatePhaseProgress();
+                    if(game.repairProgress >= game.repairRequired) { game.repairDone=true; closeLidBtn.classList.remove('hidden'); phaseInstructions.innerText="✅ "+(currentLang === 'ru'?"Клей нанесён! Закройте крышку.":"Glue applied! Close lid."); }
+                }
+            });
+        } else if(rt === "fanRam") {
+            game.repairRequired = 2;
+            targetGroup.innerHTML = `<circle cx="250" cy="230" r="40" fill="#4a6741" id="fan"/><rect x="340" y="340" width="70" height="30" fill="#aaa" id="ramSlot"/><rect x="150" y="340" width="45" height="30" fill="#b87333" id="ramStick" draggable="true"/><text x="250" y="400" fill="white">${translations[currentLang].replaceParts}</text>`;
+            let fanCleaned = false;
+            document.getElementById('fan').addEventListener('click', () => {
+                if(!fanCleaned && !game.repairDone) { sounds.repair(rt); fanCleaned=true; game.repairProgress++; updatePhaseProgress(); }
+            });
+            document.getElementById('ramStick').addEventListener('dragstart', e => e.dataTransfer.setData("text","ram"));
+            document.getElementById('ramSlot').addEventListener('dragover', e => e.preventDefault());
+            document.getElementById('ramSlot').addEventListener('drop', () => {
+                if(fanCleaned && game.repairProgress===1 && !game.repairDone) {
+                    sounds.repair(rt);
+                    game.repairProgress++; updatePhaseProgress(); game.repairDone=true;
+                    closeLidBtn.classList.remove('hidden');
+                    phaseInstructions.innerText="✅ "+(currentLang === 'ru'?"RAM установлена! Закройте крышку.":"RAM installed! Close lid.");
+                }
+            });
+        } else if(rt === "thermal") {
+            game.repairRequired = 5;
+            targetGroup.innerHTML = `<rect x="190" y="200" width="120" height="100" fill="#2c3e50" stroke="gold" id="chip"/><text x="250" y="340" fill="white">${translations[currentLang].thermalPasteHint}</text>`;
+            document.getElementById('chip').addEventListener('click', () => {
+                if(!game.repairDone && game.repairProgress < game.repairRequired) {
+                    game.repairProgress++;
+                    sounds.repair(rt);
+                    updatePhaseProgress();
+                    if(game.repairProgress >= game.repairRequired) { game.repairDone=true; closeLidBtn.classList.remove('hidden'); phaseInstructions.innerText="✅ "+(currentLang === 'ru'?"Термопаста нанесена! Закройте крышку.":"Paste applied! Close lid."); }
+                }
+            });
+        } else if(rt === "shakeCrumbs") {
+            targetGroup.innerHTML = `<button id="shakeBtn" style="margin:40px auto; background:#f97316;">💨 ${translations[currentLang].cleanSensor}</button>`;
+            document.getElementById('shakeBtn').addEventListener('click', () => { if(!game.repairDone){ sounds.repair(rt); game.repairDone=true; updatePhaseProgress(); closeLidBtn.classList.remove('hidden'); phaseInstructions.innerText="✅ "+(currentLang === 'ru'?"Крошки удалены! Закройте крышку.":"Crumbs removed! Close lid."); } });
+        } else if(rt === "teflon") {
+            game.repairRequired = 4;
+            targetGroup.innerHTML = `<rect x="140" y="280" width="40" height="10" fill="#999" id="feet1"/><rect x="320" y="280" width="40" height="10" fill="#999" id="feet2"/><rect x="140" y="320" width="40" height="10" fill="#999" id="feet3"/><rect x="320" y="320" width="40" height="10" fill="#999" id="feet4"/><text x="250" y="380" fill="white">${translations[currentLang].replaceParts}</text>`;
+            for(let i=1;i<=4;i++) {
+                document.getElementById(`feet${i}`).addEventListener('click', () => {
+                    if(!game.repairDone && game.repairProgress < game.repairRequired) {
+                        game.repairProgress++;
+                        sounds.repair(rt);
+                        updatePhaseProgress();
+                        if(game.repairProgress>=game.repairRequired){ game.repairDone=true; closeLidBtn.classList.remove('hidden'); }
+                    }
+                });
+            }
+        } else if(rt === "inkWipe") {
+            game.repairRequired = 1;
+            targetGroup.innerHTML = `<rect x="100" y="80" width="300" height="340" fill="#d0d0d0" id="inkArea"/><text x="250" y="450" fill="red">${translations[currentLang].cleanSensor}</text>`;
+            document.getElementById('inkArea').addEventListener('click', () => { if(!game.repairDone){ sounds.repair(rt); game.repairDone=true; updatePhaseProgress(); closeLidBtn.classList.remove('hidden'); phaseInstructions.innerText="✅ "+(currentLang === 'ru'?"Чернила стёрты! Закройте крышку.":"Ink wiped! Close lid."); } });
+        } else if(rt === "wheelRotate") {
+            game.repairRequired = 1;
+            targetGroup.innerHTML = `<circle cx="250" cy="300" r="70" fill="#ddd" id="wheel"/><text x="250" y="420" fill="white">${translations[currentLang].replaceParts}</text>`;
+            document.getElementById('wheel').addEventListener('click', () => { if(!game.repairDone){ sounds.repair(rt); game.repairDone=true; updatePhaseProgress(); closeLidBtn.classList.remove('hidden'); phaseInstructions.innerText="✅ "+(currentLang === 'ru'?"Колесо исправлено! Закройте крышку.":"Wheel fixed! Close lid."); } });
+        } else if(rt === "pencilRewind") {
+            game.repairRequired = 1;
+            targetGroup.innerHTML = `<circle cx="180" cy="190" r="40" fill="gold" id="reel1"/><circle cx="320" cy="190" r="40" fill="gold" id="reel2"/><text x="250" y="380" fill="white">${translations[currentLang].connectWires}</text>`;
+            let reels = 0;
+            const reelClick = () => { reels++; sounds.repair(rt); if(reels>=2 && !game.repairDone){ game.repairDone=true; updatePhaseProgress(); closeLidBtn.classList.remove('hidden'); phaseInstructions.innerText="✅ "+(currentLang === 'ru'?"Лента перемотана! Закройте крышку.":"Tape rewound! Close lid."); } };
+            document.getElementById('reel1').addEventListener('click', reelClick);
+            document.getElementById('reel2').addEventListener('click', reelClick);
+        } else {
+            game.repairRequired = 3;
+            targetGroup.innerHTML = `<rect x="150" y="150" width="200" height="200" fill="#c0392b" stroke="white" id="repairArea"/><text x="250" y="380" fill="white">${translations[currentLang].replaceParts} (3x)</text>`;
+            document.getElementById('repairArea').addEventListener('click', () => {
+                if(!game.repairDone && game.repairProgress < game.repairRequired) {
+                    game.repairProgress++;
+                    sounds.repair(rt);
+                    updatePhaseProgress();
+                    if(game.repairProgress >= game.repairRequired) { game.repairDone=true; closeLidBtn.classList.remove('hidden'); phaseInstructions.innerText="✅ "+(currentLang === 'ru'?"Ремонт завершён! Закройте крышку.":"Repair done! Close lid."); }
+                }
+            });
+        }
+        updatePhaseProgress();
+    }
+
+    function closeLidAndReassemble() {
+        if(game.stage === 2 && game.repairDone) { game.stage = 3; updateUI(); }
+        if(game.stage === 3) {
+            sounds.lidClose();
+            document.getElementById('internalsGroup').style.display = "none";
+            let caseGroup = document.getElementById('caseGroup');
+            caseGroup.style.display = "block";
+            caseGroup.classList.remove('lid-slide-out');
+            caseGroup.classList.add('lid-slide-in');
+            setTimeout(() => caseGroup.classList.remove('lid-slide-in'), 400);
+            closeLidBtn.classList.add('hidden');
+
+            if (upgrades.autoAssembler) {
+                for(let i=0; i<game.totalScrews; i++) {
+                    let pos = game.screwPositions[i];
+                    let newScrew = document.createElementNS("http://www.w3.org/2000/svg","circle");
+                    newScrew.setAttribute("cx", pos.x);
+                    newScrew.setAttribute("cy", pos.y);
+                    newScrew.setAttribute("r", "12");
+                    newScrew.setAttribute("fill", upgrades.goldenScrews ? "#FFD700" : "#b87333");
+                    deviceSvg.appendChild(newScrew);
+                    addSparkleAt(pos.x, pos.y);
+                }
+                game.screwsReinserted = game.totalScrews;
+                updatePhaseProgress();
+                game.stage = 4;
+                updateUI();
+                phaseInstructions.innerText = "Auto-assembly done! Click 'POWER ON'.";
+                return;
+            }
+
+            let snapDistance = upgrades.magneticMat ? 100 : 60;
+            for(let i=0; i<game.totalScrews; i++) {
+                let pos = game.screwPositions[i];
+                let ghost = document.createElementNS("http://www.w3.org/2000/svg","circle");
+                ghost.setAttribute("cx", pos.x);
+                ghost.setAttribute("cy", pos.y);
+                ghost.setAttribute("r", "14");
+                ghost.setAttribute("stroke", "#ffaa44");
+                ghost.setAttribute("stroke-width", "2.5");
+                ghost.setAttribute("fill", "none");
+                ghost.setAttribute("stroke-dasharray", "5 3");
+                ghost.classList.add("ghost-screw");
+                let hitArea = document.createElementNS("http://www.w3.org/2000/svg","circle");
+                hitArea.setAttribute("cx", pos.x);
+                hitArea.setAttribute("cy", pos.y);
+                hitArea.setAttribute("r", snapDistance);
+                hitArea.setAttribute("fill", "transparent");
+                hitArea.setAttribute("stroke", "none");
+                hitArea.setAttribute("pointer-events", "visible");
+                hitArea.addEventListener('click', () => {
+                    if(game.stage === 3 && game.selectedTrayScrew !== null && game.screwsInTray > 0) {
+                        sounds.screwInsert();
+                        ghost.remove();
+                        hitArea.remove();
+                        game.screwsInTray--;
+                        game.screwsReinserted++;
+                        game.selectedTrayScrew = null;
+                        updateScrewTrayUI();
+                        let newScrew = document.createElementNS("http://www.w3.org/2000/svg","circle");
+                        newScrew.setAttribute("cx", pos.x);
+                        newScrew.setAttribute("cy", pos.y);
+                        newScrew.setAttribute("r", "12");
+                        newScrew.setAttribute("fill", upgrades.goldenScrews ? "#FFD700" : "#b87333");
+                        deviceSvg.appendChild(newScrew);
+                        addSparkleAt(pos.x, pos.y);
+                        updatePhaseProgress();
+                        if(game.screwsReinserted === game.totalScrews) {
+                            game.stage = 4;
+                            updateUI();
+                            phaseInstructions.innerText = "Assembly complete! Click 'POWER ON'.";
+                        }
+                    } else phaseInstructions.innerText = "Select a screw from tray first!";
+                });
+                deviceSvg.appendChild(ghost);
+                deviceSvg.appendChild(hitArea);
+                game.ghostHoles.push({ghost, hitArea});
+            }
+            phaseInstructions.innerText = "Select a screw from tray, click on ghost hole.";
+        }
+    }
+
+    function addSparkleAt(x, y) {
+        sounds.sparkle();
+        const svg = document.getElementById('deviceSvg');
+        const sparkle = document.createElementNS("http://www.w3.org/2000/svg","circle");
+        sparkle.setAttribute("cx", x);
+        sparkle.setAttribute("cy", y);
+        sparkle.setAttribute("r", "6");
+        sparkle.setAttribute("fill", "gold");
+        sparkle.setAttribute("opacity", "0.8");
+        sparkle.style.animation = "goldPulse 0.4s ease-out forwards";
+        svg.appendChild(sparkle);
+        setTimeout(() => sparkle.remove(), 400);
+    }
+
+    function powerOn() {
+        if(game.stage !== 4) return;
+        sounds.powerOn();
+        let boot = document.createElement('div');
+        boot.className = 'boot-screen';
+        boot.innerHTML = `<div style="font-size:24px;">⚡ BOOTING SYSTEM</div><div class="boot-progress" style="width:80%;height:8px;background:#333;margin:15px 0;"><div class="boot-fill" style="width:0%;height:100%;background:#0f0;"></div></div>`;
+        document.querySelector('.canvas-area').appendChild(boot);
+        let fill = boot.querySelector('.boot-fill');
+        let w = 0;
+        let iv = setInterval(() => {
+            w += 2;
+            fill.style.width = w + '%';
+            if(w >= 100) {
+                clearInterval(iv);
+                boot.remove();
+                game.stage = 5;
+                updateUI();
+                powerOnBtn.classList.add('hidden');
+            }
+        }, 25);
+    }
+
+    function setupDesignMode() {
+        document.getElementById('caseGroup').style.display = "block";
+        document.getElementById('internalsGroup').style.display = "none";
+        let colors = ["#f97316","#3b82f6","#2ecc71","#facc15","#ef4444","#a855f7"];
+        if (upgrades.chrome) colors.unshift("chrome");
+        let cp = document.getElementById('colorPicker');
+        cp.innerHTML = colors.map(c => `<div class="color-swatch" style="background:${c === 'chrome' ? 'linear-gradient(135deg, #e0e0e0, #a0a0a0)' : c}" data-color="${c}"></div>`).join('');
+        document.querySelectorAll('.color-swatch').forEach(sw => {
+            sw.addEventListener('click', () => {
+                let color = sw.dataset.color;
+                let caseGroup = document.getElementById('caseGroup');
+                let paths = caseGroup.querySelectorAll('rect,path,circle');
+                if (color === 'chrome') {
+                    paths.forEach(p => { if(p.getAttribute('fill') && !p.getAttribute('fill')?.includes('url')) p.setAttribute('fill', "url(#chromeGrad)"); });
+                } else {
+                    paths.forEach(p => { if(p.getAttribute('fill') && !p.getAttribute('fill')?.includes('url')) p.setAttribute('fill', color); });
+                }
+                sounds.uiClick();
+            });
+        });
+
+        const baseStickers = ["💻","🔌","🔋","🔥","💎","✨","🌈","🎮","🕹️","👾","🐱","🍕","🚀","🛸","🍄","🍀","👑","🎸","🛹","🏆"];
+        const vipStickers = upgrades.vipStickers ? ["👑","💎","🦄","🛸"] : [];
+        const allStickers = [...baseStickers, ...vipStickers];
+        const gallery = document.getElementById('stickerGallery');
+        gallery.innerHTML = '';
+        allStickers.forEach(emoji => {
+            const stickerDiv = document.createElement('div');
+            stickerDiv.className = 'sticker';
+            stickerDiv.innerHTML = `<span style="font-size: 2.5rem;">${emoji}</span>`;
+            stickerDiv.addEventListener('click', () => {
+                document.querySelectorAll('.sticker').forEach(s => s.classList.remove('selected'));
+                stickerDiv.classList.add('selected');
+                selectedStickerUrl = emoji;
+                stickerFeedback.innerText = `✅ Sticker "${emoji}" selected. Click on device to place.`;
+                sounds.uiClick();
+            });
+            gallery.appendChild(stickerDiv);
+        });
+
+        const canvasArea = document.querySelector('.canvas-area');
+        canvasArea.addEventListener('click', (e) => {
+            if(game.stage !== 5 || !selectedStickerUrl) return;
+            const rect = canvasArea.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const stickerDiv = document.createElement('div');
+            stickerDiv.style.position = 'absolute';
+            stickerDiv.style.left = `${x-32}px`;
+            stickerDiv.style.top = `${y-32}px`;
+            stickerDiv.style.width = '64px';
+            stickerDiv.style.height = '64px';
+            stickerDiv.style.pointerEvents = 'none';
+            stickerDiv.style.fontSize = '3rem';
+            stickerDiv.style.display = 'flex';
+            stickerDiv.style.alignItems = 'center';
+            stickerDiv.style.justifyContent = 'center';
+            stickerDiv.style.textShadow = '0 0 4px black';
+            stickerDiv.innerHTML = selectedStickerUrl;
+            document.getElementById('sticker-layer').appendChild(stickerDiv);
+            sounds.sticker();
+        });
+    }
+
+    function showReviewPopup(rating, message, bonus) {
+        const popup = document.createElement('div');
+        popup.className = 'review-popup';
+        let stars = '';
+        for (let i = 1; i <= 5; i++) stars += i <= rating ? '★' : '☆';
+        popup.innerHTML = `
+            <h4>📝 Customer Review</h4>
+            <div class="stars">${stars}</div>
+            <p>${message}</p>
+            ${bonus > 0 ? `<p style="color:#facc15;">+${bonus}$ bonus!</p>` : ''}
+            <button onclick="this.parentElement.remove()">OK</button>
+        `;
+        document.body.appendChild(popup);
+        setTimeout(() => popup.remove(), 5000);
+    }
+
+    function sellDevice() {
+        if(game.stage !== 6) return;
+        let min = game.device.minPrice;
+        let max = game.device.maxPrice;
+        if (upgrades.license) max = Math.floor(max * 1.3);
+        if (upgrades.goldenScrews) max = Math.floor(max * 1.1);
+        if (game.goldFound) max += 300;
+        if (game.thermalPasteBonus) max = Math.floor(max * 1.15);
+        const price = parseInt(priceInput.value);
+        if (isNaN(price) || price < min || price > max) {
+            sellFeedback.innerHTML = translations[currentLang].priceLow;
+            sounds.uiError();
+            return;
+        }
+        let finalPrice = price;
+        let rating = 3;
+        let reviewMessage = currentLang === 'ru' ? "Работает, но винтиков не хватает..." : "Works, but missing some screws...";
+        let bonus = 0;
+        const cleanPercent = game.cleaningProgress;
+        const allScrews = (game.screwsReinserted === game.totalScrews);
+        if (cleanPercent >= 100 && allScrews) {
+            rating = 5;
+            reviewMessage = currentLang === 'ru' ? "Идеально! Как новый!" : "Perfect! Like new!";
+            bonus = Math.floor(finalPrice * 0.2);
+            finalPrice += bonus;
+        } else if (cleanPercent < 90) {
+            rating = 1;
+            reviewMessage = currentLang === 'ru' ? "Грязный телефон! Ужасно!" : "Dirty device! Terrible!";
+        } else if (!allScrews) {
+            rating = 3;
+            reviewMessage = currentLang === 'ru' ? "Работает, но винтиков не хватает..." : "Works, but missing screws...";
+        } else {
+            rating = 4;
+            reviewMessage = currentLang === 'ru' ? "Хорошо, но могло быть чище." : "Good, but could be cleaner.";
+        }
+        player.coins += finalPrice;
+        player.currentDeviceIndex = (player.currentDeviceIndex + 1) % DEVICES.length;
+        localStorage.setItem('techMasterSave', JSON.stringify({coins:player.coins, level:player.currentDeviceIndex}));
+        document.getElementById('coinsDisplay').innerText = player.coins;
+        showReviewPopup(rating, reviewMessage, bonus);
+        sounds.sell();
+        document.getElementById('sticker-layer').innerHTML = '';
+        ctx.clearRect(0, 0, 500, 500);
+        startDevice(DEVICES[player.currentDeviceIndex]);
+    }
+
+    function applyUltrasonicCleaning() {
+        if (!upgrades.ultrasonic) return;
+        sounds.ultrasonic();
+        const imgData = ctx.getImageData(0, 0, 500, 500);
+        const data = imgData.data;
+        const totalPixels = 500 * 500;
+        const targetCleared = Math.floor(totalPixels * 0.3);
+        let cleared = 0;
+        while (cleared < targetCleared) {
+            const idx = Math.floor(Math.random() * totalPixels) * 4 + 3;
+            if (data[idx] > 30) {
+                data[idx] = 0;
+                cleared++;
+            }
+        }
+        ctx.putImageData(imgData, 0, 0);
+        let transparent = 0;
+        for (let i = 3; i < data.length; i += 4) if (data[i] < 30) transparent++;
+        game.cleaningProgress = Math.min(100, Math.floor((transparent / totalPixels) * 100));
+        updatePhaseProgress();
+    }
+
+    function startDevice(device) {
+        game.device = device;
+        game.totalScrews = device.screws;
+        game.screwsRemoved = 0;
+        game.screwsInTray = 0;
+        game.screwsReinserted = 0;
+        game.repairDone = false;
+        game.repairProgress = 0;
+        game.selectedTrayScrew = null;
+        game.ghostHoles = [];
+        game.cleaningProgress = 0;
+        game.goldFound = false;
+        game.thermalPasteBonus = false;
+        game.stage = 0;
+        updateStageProgress();
+        deviceSvg.innerHTML = '';
+        let caseGroup = document.createElementNS("http://www.w3.org/2000/svg","g"); caseGroup.id = "caseGroup";
+        caseGroup.innerHTML = device.caseSvg();
+        deviceSvg.appendChild(caseGroup);
+        let internalsGroup = document.createElementNS("http://www.w3.org/2000/svg","g"); internalsGroup.id = "internalsGroup";
+        internalsGroup.innerHTML = device.internalsSvg() + `<g id="repairTargetGroup"></g>`;
+        internalsGroup.style.display = "none";
+        deviceSvg.appendChild(internalsGroup);
+        
+        let positions = device.screwPos.map(p => ({x: p[0], y: p[1]}));
+        game.screwPositions = positions;
+        const fastUnscrew = upgrades.screwdriver || upgrades.robotAssistant;
+        const screwColor = upgrades.goldenScrews ? "#FFD700" : "#b87333";
+        for(let i=0; i<device.screws; i++) {
+            let screw = document.createElementNS("http://www.w3.org/2000/svg","circle");
+            screw.setAttribute("cx", positions[i].x);
+            screw.setAttribute("cy", positions[i].y);
+            screw.setAttribute("r", "12");
+            screw.setAttribute("fill", screwColor);
+            screw.setAttribute("stroke", "#6b3e1a");
+            screw.classList.add("screw");
+            screw.addEventListener("click", (e) => {
+                if(game.stage === 1) {
+                    if (device.hasLoot && !game.goldFound && Math.random() < 0.15) {
+                        game.goldFound = true;
+                        sounds.gold();
+                        const rect = document.querySelector('.canvas-area').getBoundingClientRect();
+                        const goldDiv = document.createElement('div');
+                        goldDiv.className = 'gold-sparkle';
+                        goldDiv.style.left = (rect.left + rect.width/2) + 'px';
+                        goldDiv.style.top = (rect.top + rect.height/2) + 'px';
+                        document.body.appendChild(goldDiv);
+                        setTimeout(() => goldDiv.remove(), 500);
+                        phaseInstructions.innerText = "✨ You found a gold part! +$300 to price! ✨";
+                        setTimeout(() => phaseInstructions.innerText = "🔩 Click screws to remove them.", 2000);
+                    }
+                    if (fastUnscrew || upgrades.megaMagnet) {
+                        sounds.unscrew();
+                        screw.remove();
+                        game.screwsRemoved++;
+                        game.screwsInTray++;
+                        updateScrewTrayUI();
+                        updatePhaseProgress();
+                        if(game.screwsRemoved === game.totalScrews) {
+                            openLidBtn.classList.remove('hidden');
+                            phaseInstructions.innerText = "All screws removed! Click 'OPEN LID'.";
+                        }
+                    } else {
+                        sounds.unscrew();
+                        screw.classList.add('fly');
+                        setTimeout(() => {
+                            screw.remove();
+                            game.screwsRemoved++;
+                            game.screwsInTray++;
+                            updateScrewTrayUI();
+                            updatePhaseProgress();
+                            if(game.screwsRemoved === game.totalScrews) {
+                                openLidBtn.classList.remove('hidden');
+                                phaseInstructions.innerText = "All screws removed! Click 'OPEN LID'.";
+                            }
+                        }, 150);
+                    }
+                }
+            });
+            deviceSvg.appendChild(screw);
+        }
+        ctx.clearRect(0,0,500,500);
+        ctx.fillStyle = "#6b4c3b";
+        ctx.fillRect(0,0,500,500);
+        for(let i=0;i<600;i++) {
+            ctx.fillStyle = `rgba(40,25,15,${0.5+Math.random()*0.5})`;
+            ctx.beginPath(); ctx.arc(Math.random()*500, Math.random()*500, Math.random()*12+3, 0, Math.PI*2);
+            ctx.fill();
+        }
+        applyUltrasonicCleaning();
+        dirtCanvas.style.pointerEvents = "auto";
+        updateUI();
+        switchScreen('workshop');
+        sounds.swoosh();
+    }
+
+    let eraserRadius = upgrades.brush ? 45 : 30;
+    function cleanErase(x,y) {
+        if(game.stage !== 0) return;
+        sounds.clean();
+        ctx.save();
+        ctx.globalCompositeOperation = "destination-out";
+        ctx.beginPath();
+        ctx.arc(x, y, eraserRadius, 0, Math.PI*2);
+        ctx.fill();
+        ctx.restore();
+        let imgData = ctx.getImageData(0,0,500,500);
+        let transparent = 0;
+        for(let i=3;i<imgData.data.length;i+=4) if(imgData.data[i] < 30) transparent++;
+        game.cleaningProgress = Math.min(100, Math.floor((transparent/(500*500))*100));
+        updatePhaseProgress();
+        if(game.cleaningProgress >= 85) {
+            ctx.clearRect(0,0,500,500);
+            game.cleaningProgress = 100;
+            updatePhaseProgress();
+            nextPhaseBtn.classList.remove('hidden');
+            phaseInstructions.innerText = "✨ Perfect cleanliness! ✨";
+        }
+    }
+
+    dirtCanvas.addEventListener('mousedown', (e) => {
+        if(game.stage !== 0) return;
+        ensureAudio();
+        let rect = dirtCanvas.getBoundingClientRect();
+        let x = (e.clientX - rect.left) * (500/rect.width);
+        let y = (e.clientY - rect.top) * (500/rect.height);
+        cleanErase(x,y);
+        let moveHandler = (me) => {
+            let mx = (me.clientX - rect.left) * (500/rect.width);
+            let my = (me.clientY - rect.top) * (500/rect.height);
+            cleanErase(mx,my);
+        };
+        window.addEventListener('mousemove', moveHandler);
+        window.addEventListener('mouseup', () => window.removeEventListener('mousemove', moveHandler), {once:true});
+    });
+
+    dirtCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        ensureAudio();
+        let rect = dirtCanvas.getBoundingClientRect();
+        let touch = e.touches[0];
+        let x = (touch.clientX - rect.left) * (500/rect.width);
+        let y = (touch.clientY - rect.top) * (500/rect.height);
+        cleanErase(x,y);
+        let moveHandler = (me) => {
+            let mt = me.touches[0];
+            let mx = (mt.clientX - rect.left) * (500/rect.width);
+            let my = (mt.clientY - rect.top) * (500/rect.height);
+            cleanErase(mx,my);
+        };
+        window.addEventListener('touchmove', moveHandler);
+        window.addEventListener('touchend', () => window.removeEventListener('touchmove', moveHandler), {once:true});
+    });
+
+    function switchScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(`${screenId}-screen`).classList.add('active');
+        if(screenId === 'orders') renderDevices();
+        if(screenId === 'shop') renderShop();
+        sounds.uiClick();
+    }
+
+    function renderDevices() {
+        let grid = document.getElementById('deviceGrid');
+        const deviceNames = translations[currentLang].devices;
+        const deviceIcons = translations[currentLang].deviceIcons;
+        grid.innerHTML = DEVICES.map((dev, idx) => `
+            <div class="device-card" data-device-idx="${idx}">
+                <div class="device-icon">${deviceIcons[idx]}</div>
+                <div class="device-name">${deviceNames[idx]}</div>
+                <div class="device-reward">💰 ${dev.base} ${currentLang === 'ru' ? 'монет' : 'coins'}</div>
+            </div>
+        `).join('');
+        document.querySelectorAll('.device-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const idx = parseInt(card.getAttribute('data-device-idx'));
+                player.currentDeviceIndex = idx;
+                startDevice(DEVICES[idx]);
+                sounds.uiClick();
+            });
+        });
+    }
+
+    function renderShop() {
+        const t = translations[currentLang];
+        const upgradesList = [
+            { id: 'screwdriver', name: t.electricScrewdriver, price: UPGRADE_PRICES.screwdriver, desc: currentLang === 'ru' ? 'Откручивает винты в 2 раза быстрее' : 'Unscrew 2x faster' },
+            { id: 'xray', name: t.xray, price: UPGRADE_PRICES.xray, desc: currentLang === 'ru' ? 'Подсвечивает оставшуюся грязь' : 'Highlights remaining dirt' },
+            { id: 'robotAssistant', name: t.robotHelper, price: UPGRADE_PRICES.robotAssistant, desc: currentLang === 'ru' ? 'Автоматически собирает винты в лоток' : 'Auto-collects screws' },
+            { id: 'ultrasonic', name: t.ultraSolvent, price: UPGRADE_PRICES.ultrasonic, desc: currentLang === 'ru' ? 'Удаляет 30% грязи мгновенно' : 'Removes 30% dirt instantly' }
+        ];
+        shopGrid.innerHTML = upgradesList.map(up => `
+            <div class="shop-item">
+                <h3>${up.name}</h3>
+                <div class="price">💰 ${up.price} ${currentLang === 'ru' ? 'монет' : 'coins'}</div>
+                <div class="desc">${up.desc}</div>
+                <button id="buy-${up.id}" ${upgrades[up.id] ? 'disabled class="bought"' : ''}>${upgrades[up.id] ? '✅ ' + (currentLang === 'ru' ? 'КУПЛЕНО' : 'OWNED') : (currentLang === 'ru' ? 'КУПИТЬ' : 'BUY')}</button>
+            </div>
+        `).join('');
+        upgradesList.forEach(up => {
+            const btn = document.getElementById(`buy-${up.id}`);
+            if (btn && !upgrades[up.id]) btn.addEventListener('click', () => {
+                if (player.coins >= up.price) {
+                    player.coins -= up.price;
+                    upgrades[up.id] = true;
+                    saveUpgrades();
+                    document.getElementById('coinsDisplay').innerText = player.coins;
+                    renderShop();
+                    sounds.uiBuy();
+                } else {
+                    sounds.uiError();
+                    alert(t.notEnoughCoins);
+                }
+            });
+        });
+    }
+
+    // Event Listeners
+    document.getElementById('navMenuBtn').addEventListener('click', () => switchScreen('menu'));
+    document.getElementById('navOrdersBtn').addEventListener('click', () => switchScreen('orders'));
+    document.getElementById('navWorkshopBtn').addEventListener('click', () => {
+        if(game.device) switchScreen('workshop');
+        else { alert(translations[currentLang].selectDevice); switchScreen('orders'); }
+        sounds.uiClick();
+    });
+    document.getElementById('navShopBtn').addEventListener('click', () => switchScreen('shop'));
+    document.getElementById('startGameBtn').addEventListener('click', () => switchScreen('orders'));
+    document.getElementById('backMenuFromOrders').addEventListener('click', () => switchScreen('menu'));
+    document.getElementById('backShopBtn').addEventListener('click', () => switchScreen('menu'));
+
+    nextPhaseBtn.addEventListener('click', () => { nextPhase(); sounds.uiClick(); });
+    openLidBtn.addEventListener('click', () => { openLid(); sounds.uiClick(); });
+    closeLidBtn.addEventListener('click', () => { closeLidAndReassemble(); sounds.uiClick(); });
+    powerOnBtn.addEventListener('click', () => { powerOn(); sounds.uiClick(); });
+    sellBtn.addEventListener('click', () => { game.stage = 6; updateUI(); sounds.uiClick(); });
+    submitPriceBtn.addEventListener('click', () => { sellDevice(); sounds.uiClick(); });
+
+    // Settings Modal
+    const modal = document.getElementById('settingsModal');
+    const gearBtn = document.getElementById('settingsGearBtn');
+    const backToGameBtn = document.getElementById('backToGameBtn');
+    gearBtn.onclick = () => { modal.classList.add('active'); updateLangButtons(); updateSoundUI(); };
+    backToGameBtn.onclick = () => modal.classList.remove('active');
+    document.getElementById('lang-ru').onclick = () => setLanguage('ru');
+    document.getElementById('lang-en').onclick = () => setLanguage('en');
+    document.getElementById('sound-on').onclick = () => setMute(false);
+    document.getElementById('sound-off').onclick = () => setMute(true);
+    function updateLangButtons() { document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active-lang')); document.getElementById(`lang-${currentLang}`)?.classList.add('active-lang'); }
+    function updateSoundUI() {
+        const soundOn = document.getElementById('sound-on');
+        const soundOff = document.getElementById('sound-off');
+        if (soundOn && soundOff) {
+            if (!isMuted) { soundOn.classList.add('active'); soundOff.classList.remove('active'); }
+            else { soundOff.classList.add('active'); soundOn.classList.remove('active'); }
+        }
+    }
+
+    // Load saved data and start
+    let saved = localStorage.getItem('techMasterSave');
+    if(saved) {
+        try {
+            let d = JSON.parse(saved);
+            player.coins = d.coins || 1200;
+            player.currentDeviceIndex = d.level || 0;
+            document.getElementById('coinsDisplay').innerText = player.coins;
+        } catch(e) {}
+    }
+    loadUpgrades();
+    if (upgrades.brush) eraserRadius = 45;
+    setLanguage(currentLang);
+    setMute(isMuted);
+    switchScreen('menu');
+</script>
+
+<!-- Инициализация SDK Яндекс Игр -->
+<script>
+    let ysdk = null;
+    window.initYandexSDK = async function() {
+        try {
+            if (typeof YaGames !== 'undefined') {
+                ysdk = await YaGames.init();
+                console.log('Yandex SDK initialized');
+                // При необходимости можно добавить вызовы для рекламы, покупок и сохранения данных
+                // Например: ysdk.getPlayer().setData({ key: 'coins', value: player.coins });
+            } else {
+                console.warn('YaGames not defined (local testing)');
+            }
+        } catch (e) {
+            console.error('Yandex SDK init error:', e);
+        }
+    };
+    // Если скрипт уже загрузился до onload, инициализируем сразу
+    if (typeof YaGames !== 'undefined') {
+        initYandexSDK();
+    }
+</script>
+</body>
+</html>
